@@ -1,4 +1,12 @@
 import 'package:flutter/material.dart';
+import 'config/theme.dart';
+import 'services/auth_service.dart';
+import 'models/models.dart';
+import 'screens/auth/login_screen.dart';
+import 'screens/auth/register_screen.dart';
+import 'screens/user/user_home_screen.dart';
+import 'screens/advisor/advisor_home_screen.dart';
+import 'screens/admin/admin_home_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,16 +20,166 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Sajelo Guru',
-      theme: ThemeData(
-        useMaterial3: true,
-        fontFamily: 'Roboto',
-        scaffoldBackgroundColor: const Color(0xFF4B2396),
-      ),
-      home: const AuthScreen(),
+      theme: AppTheme.theme,
+      home: const SplashScreen(),
+      routes: {
+        '/': (context) => const AuthScreen(),
+      },
     );
   }
 }
 
+// ---------- Splash Screen with Auto-Login ----------
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+    _scaleAnimation = Tween<double>(begin: 0.5, end: 1).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
+    );
+    _controller.forward();
+    _checkAuth();
+  }
+
+  Future<void> _checkAuth() async {
+    await Future.delayed(const Duration(seconds: 2));
+    if (!mounted) return;
+
+    final isLoggedIn = await AuthService.isLoggedIn();
+    if (isLoggedIn) {
+      final user = await AuthService.getSavedUser();
+      if (user != null && mounted) {
+        Widget home;
+        switch (user.role) {
+          case 'advisor':
+            home = const AdvisorHomeScreen();
+            break;
+          case 'admin':
+            home = const AdminHomeScreen();
+            break;
+          default:
+            home = const UserHomeScreen();
+        }
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => home),
+        );
+        return;
+      }
+    }
+
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AuthScreen()),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppTheme.primaryGradient),
+        child: Center(
+          child: AnimatedBuilder(
+            animation: _controller,
+            builder: (context, child) {
+              return Opacity(
+                opacity: _fadeAnimation.value,
+                child: Transform.scale(
+                  scale: _scaleAnimation.value,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 100,
+                        height: 100,
+                        decoration: const BoxDecoration(
+                          color: AppTheme.gold,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0x44FFE45C),
+                              blurRadius: 30,
+                              spreadRadius: 10,
+                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.brightness_2_rounded,
+                            color: AppTheme.accentPurple,
+                            size: 50,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      const Text(
+                        'Sajelo Guru',
+                        style: TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Your Astrology Companion',
+                        style: TextStyle(
+                          color: Colors.white60,
+                          fontSize: 16,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                      const SizedBox(
+                        width: 30,
+                        height: 30,
+                        child: CircularProgressIndicator(
+                          color: AppTheme.gold,
+                          strokeWidth: 2.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------- Auth Screen ----------
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -31,32 +189,59 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   bool isLogin = true;
-  bool obscureLoginPassword = true;
-  bool obscureRegisterPassword = true;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF5C2DB2), Color(0xFF3B1C78)],
-          ),
-        ),
+        decoration: const BoxDecoration(gradient: AppTheme.primaryGradient),
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 430),
                 child: Column(
                   children: [
-                    const _BrandHeader(),
+                    // Brand Header
+                    Column(
+                      children: [
+                        Container(
+                          width: 72,
+                          height: 72,
+                          decoration: const BoxDecoration(
+                            color: AppTheme.gold,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.brightness_2_rounded,
+                              color: AppTheme.accentPurple,
+                              size: 38,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        const Text(
+                          'Sajelo Guru',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Your Astrology Companion',
+                          style:
+                              TextStyle(color: Colors.white70, fontSize: 16),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 26),
+
+                    // Auth Card
                     Container(
                       padding: const EdgeInsets.fromLTRB(20, 24, 20, 18),
                       decoration: BoxDecoration(
@@ -73,29 +258,14 @@ class _AuthScreenState extends State<AuthScreen> {
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 220),
                         child: isLogin
-                            ? _LoginCard(
-                                key: const ValueKey('login'),
-                                obscurePassword: obscureLoginPassword,
-                                onTogglePassword: () {
-                                  setState(() {
-                                    obscureLoginPassword =
-                                        !obscureLoginPassword;
-                                  });
-                                },
-                              )
-                            : _RegisterCard(
-                                key: const ValueKey('register'),
-                                obscurePassword: obscureRegisterPassword,
-                                onTogglePassword: () {
-                                  setState(() {
-                                    obscureRegisterPassword =
-                                        !obscureRegisterPassword;
-                                  });
-                                },
-                              ),
+                            ? const LoginScreen(key: ValueKey('login'))
+                            : const RegisterScreen(
+                                key: ValueKey('register')),
                       ),
                     ),
                     const SizedBox(height: 18),
+
+                    // Toggle Auth Type
                     Wrap(
                       alignment: WrapAlignment.center,
                       crossAxisAlignment: WrapCrossAlignment.center,
@@ -105,21 +275,17 @@ class _AuthScreenState extends State<AuthScreen> {
                           isLogin
                               ? "Don't have an account?"
                               : 'Already have an account?',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: Colors.white,
-                          ),
+                          style: const TextStyle(color: Colors.white),
                         ),
                         GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              isLogin = !isLogin;
-                            });
-                          },
+                          onTap: () =>
+                              setState(() => isLogin = !isLogin),
                           child: Text(
                             isLogin ? 'Create New Account' : 'Login',
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              color: const Color(0xFFFFE45C),
+                            style: const TextStyle(
+                              color: AppTheme.gold,
                               fontWeight: FontWeight.w800,
+                              fontSize: 15,
                             ),
                           ),
                         ),
@@ -132,11 +298,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         4,
                         (_) => const Padding(
                           padding: EdgeInsets.symmetric(horizontal: 4),
-                          child: Icon(
-                            Icons.star,
-                            color: Color(0xFFFFE45C),
-                            size: 26,
-                          ),
+                          child: Icon(Icons.star, color: AppTheme.gold, size: 26),
                         ),
                       ),
                     ),
@@ -144,256 +306,6 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BrandHeader extends StatelessWidget {
-  const _BrandHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Column(
-      children: [
-        Container(
-          width: 72,
-          height: 72,
-          decoration: const BoxDecoration(
-            color: Color(0xFFFFE54E),
-            shape: BoxShape.circle,
-          ),
-          child: const Center(
-            child: Icon(
-              Icons.brightness_2_rounded,
-              color: Color(0xFF9124C9),
-              size: 38,
-            ),
-          ),
-        ),
-        const SizedBox(height: 18),
-        Text(
-          'Sajelo Guru',
-          style: theme.textTheme.headlineMedium?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Your Astrology Companion',
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: Colors.white70,
-            fontWeight: FontWeight.w400,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _LoginCard extends StatelessWidget {
-  const _LoginCard({
-    super.key,
-    required this.obscurePassword,
-    required this.onTogglePassword,
-  });
-
-  final bool obscurePassword;
-  final VoidCallback onTogglePassword;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      key: key,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const _CardTitle(title: 'Welcome Back'),
-        const SizedBox(height: 20),
-        const _InputField(
-          hintText: 'Email Address',
-          prefixIcon: Icons.email_rounded,
-        ),
-        const SizedBox(height: 14),
-        _InputField(
-          hintText: 'Password',
-          prefixIcon: Icons.lock_rounded,
-          obscureText: obscurePassword,
-          suffixIcon: IconButton(
-            onPressed: onTogglePassword,
-            icon: Icon(
-              obscurePassword ? Icons.visibility_rounded : Icons.visibility_off,
-              color: const Color(0xFF58546B),
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
-        Align(
-          alignment: Alignment.centerRight,
-          child: Text(
-            'Forgot Password?',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFFA127D3),
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-        ),
-        const SizedBox(height: 22),
-        const _PrimaryButton(label: 'Login'),
-      ],
-    );
-  }
-}
-
-class _RegisterCard extends StatelessWidget {
-  const _RegisterCard({
-    super.key,
-    required this.obscurePassword,
-    required this.onTogglePassword,
-  });
-
-  final bool obscurePassword;
-  final VoidCallback onTogglePassword;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      key: key,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const _CardTitle(title: 'Create Account'),
-        const SizedBox(height: 20),
-        const _InputField(
-          hintText: 'Full Name',
-          prefixIcon: Icons.person_rounded,
-        ),
-        const SizedBox(height: 14),
-        const _InputField(
-          hintText: 'Email Address',
-          prefixIcon: Icons.email_rounded,
-        ),
-        const SizedBox(height: 14),
-        _InputField(
-          hintText: 'Create Password',
-          prefixIcon: Icons.lock_rounded,
-          obscureText: obscurePassword,
-          suffixIcon: IconButton(
-            onPressed: onTogglePassword,
-            icon: Icon(
-              obscurePassword ? Icons.visibility_rounded : Icons.visibility_off,
-              color: const Color(0xFF58546B),
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
-        const _InputField(
-          hintText: 'Phone Number',
-          prefixIcon: Icons.call_rounded,
-        ),
-        const SizedBox(height: 22),
-        const _PrimaryButton(label: 'Register'),
-      ],
-    );
-  }
-}
-
-class _CardTitle extends StatelessWidget {
-  const _CardTitle({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      title,
-      textAlign: TextAlign.center,
-      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            color: const Color(0xFF22202A),
-            fontWeight: FontWeight.w800,
-          ),
-    );
-  }
-}
-
-class _InputField extends StatelessWidget {
-  const _InputField({
-    required this.hintText,
-    required this.prefixIcon,
-    this.obscureText = false,
-    this.suffixIcon,
-  });
-
-  final String hintText;
-  final IconData prefixIcon;
-  final bool obscureText;
-  final Widget? suffixIcon;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      obscureText: obscureText,
-      decoration: InputDecoration(
-        hintText: hintText,
-        hintStyle: const TextStyle(
-          color: Color(0xFF747180),
-          fontSize: 16,
-        ),
-        filled: true,
-        fillColor: const Color(0xFFFCFCFF),
-        prefixIcon: Icon(
-          prefixIcon,
-          color: const Color(0xFF58546B),
-        ),
-        suffixIcon: suffixIcon,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 18,
-          vertical: 20,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF9A96A8)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(
-            color: Color(0xFFA127D3),
-            width: 1.5,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PrimaryButton extends StatelessWidget {
-  const _PrimaryButton({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 52,
-      child: ElevatedButton(
-        onPressed: () {},
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFB028C9),
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.2,
           ),
         ),
       ),
