@@ -61,6 +61,9 @@ class User(Base):
     profile_image = Column(String(255), nullable=True)
     role = Column(Enum(UserRole), default=UserRole.user, nullable=False)
     is_active = Column(Boolean, default=True)
+    is_email_verified = Column(Boolean, default=False)
+    otp_code = Column(String(6), nullable=True)
+    otp_expiry = Column(DateTime, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 

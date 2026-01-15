@@ -353,9 +353,9 @@ class LoadingIndicator extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const CircularProgressIndicator(color: AppTheme.gold),
+          const CircularProgressIndicator(color: AppTheme.accentPurple),
           const SizedBox(height: 16),
-          Text(message, style: const TextStyle(color: Colors.white70)),
+          Text(message, style: const TextStyle(color: AppTheme.greyText)),
         ],
       ),
     );
@@ -381,21 +381,21 @@ class EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 64, color: Colors.white30),
+          Icon(icon, size: 64, color: AppTheme.inputBorder),
           const SizedBox(height: 16),
           Text(
             title,
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: Colors.white70,
+              color: AppTheme.darkText,
             ),
           ),
           if (subtitle != null) ...[
             const SizedBox(height: 8),
             Text(
               subtitle!,
-              style: const TextStyle(color: Colors.white38),
+              style: const TextStyle(color: AppTheme.greyText),
               textAlign: TextAlign.center,
             ),
           ],

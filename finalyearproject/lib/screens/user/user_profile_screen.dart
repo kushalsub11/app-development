@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../models/models.dart';
-import '../../services/auth_service.dart';
 import '../../widgets/widgets.dart';
 
 class UserProfileScreen extends StatelessWidget {
@@ -44,13 +43,13 @@ class UserProfileScreen extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w800,
-                color: Colors.white,
+                color: AppTheme.darkText,
               ),
             ),
             const SizedBox(height: 6),
             Text(
               user?.email ?? '',
-              style: const TextStyle(color: Colors.white60, fontSize: 15),
+              style: const TextStyle(color: AppTheme.greyText, fontSize: 15),
             ),
             const SizedBox(height: 30),
 
@@ -131,13 +130,20 @@ class _ProfileMenuItem extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: ListTile(
-        leading: Icon(icon, color: AppTheme.gold),
-        title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
-        trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+        leading: Icon(icon, color: AppTheme.goldDark),
+        title: Text(title, style: const TextStyle(color: AppTheme.darkText, fontWeight: FontWeight.w600)),
+        trailing: const Icon(Icons.chevron_right, color: AppTheme.greyText),
         onTap: onTap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),

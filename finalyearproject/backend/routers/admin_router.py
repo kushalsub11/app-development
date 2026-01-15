@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from config.database import get_db
-from models.user import User, AdvisorProfile, Booking, Payment, Report
+from models.user import User, AdvisorProfile, Booking, Payment, Report, UserRole, PaymentStatus, ReportStatus
 from middleware.auth_middleware import require_role
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -14,12 +14,12 @@ async def get_admin_dashboard(
     db: Session = Depends(get_db),
 ):
     """Get admin dashboard statistics."""
-    total_users = db.query(func.count(User.id)).filter(User.role == "user").scalar()
+    total_users = db.query(func.count(User.id)).filter(User.role == UserRole.user).scalar()
     total_advisors = db.query(func.count(AdvisorProfile.id)).scalar()
     verified_advisors = db.query(func.count(AdvisorProfile.id)).filter(AdvisorProfile.is_verified == True).scalar()
     total_bookings = db.query(func.count(Booking.id)).scalar()
-    total_revenue = db.query(func.coalesce(func.sum(Payment.amount), 0)).filter(Payment.status == "completed").scalar()
-    pending_reports = db.query(func.count(Report.id)).filter(Report.status == "pending").scalar()
+    total_revenue = db.query(func.coalesce(func.sum(Payment.amount), 0)).filter(Payment.status == PaymentStatus.completed).scalar()
+    pending_reports = db.query(func.count(Report.id)).filter(Report.status == ReportStatus.pending).scalar()
 
     return {
         "total_users": total_users,

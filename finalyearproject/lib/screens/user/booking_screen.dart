@@ -79,40 +79,71 @@ class _BookingScreenState extends State<BookingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppTheme.primaryGradient),
-        child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    const Text(
-                      'Book Consultation',
-                      style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700),
-                    ),
-                  ],
+      backgroundColor: const Color(0xFF381b85),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 16.0, top: 8, bottom: 8),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ),
+        title: const Text(
+          'Book Consultation',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: Column(
+        children: [
+          const SizedBox(height: 10),
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: Color(0xFFF6F7F9),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(30),
+                  topRight: Radius.circular(30),
                 ),
               ),
-              Expanded(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(30),
+                  topRight: Radius.circular(30),
+                ),
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Advisor info
-                        Row(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Advisor info Card
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.04),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
                           children: [
                             Container(
                               width: 50,
@@ -134,7 +165,7 @@ class _BookingScreenState extends State<BookingScreen> {
                               children: [
                                 Text(
                                   widget.advisor.user?.fullName ?? 'Advisor',
-                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.darkText),
                                 ),
                                 Text(
                                   'Rs. ${widget.advisor.hourlyRate.toStringAsFixed(0)}/hr',
@@ -144,12 +175,11 @@ class _BookingScreenState extends State<BookingScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
-                        const Divider(),
-                        const SizedBox(height: 16),
+                      ),
+                      const SizedBox(height: 24),
 
-                        // Date Picker
-                        const Text('Select Date', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                      // Date Picker
+                      const Text('Select Date', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppTheme.darkText)),
                         const SizedBox(height: 10),
                         GestureDetector(
                           onTap: _selectDate,
@@ -173,56 +203,58 @@ class _BookingScreenState extends State<BookingScreen> {
                         ),
                         const SizedBox(height: 20),
 
-                        // Time Pickers
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('Start Time', style: TextStyle(fontWeight: FontWeight.w700)),
-                                  const SizedBox(height: 8),
-                                  GestureDetector(
-                                    onTap: _selectStartTime,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(14),
-                                      decoration: BoxDecoration(
-                                        border: Border.all(color: AppTheme.inputBorder),
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                      child: Text(_startTime.format(context)),
+                      // Time Pickers
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Start Time', style: TextStyle(fontWeight: FontWeight.w800, color: AppTheme.darkText)),
+                                const SizedBox(height: 8),
+                                GestureDetector(
+                                  onTap: _selectStartTime,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      border: Border.all(color: AppTheme.inputBorder.withOpacity(0.5)),
+                                      borderRadius: BorderRadius.circular(14),
                                     ),
+                                    child: Text(_startTime.format(context), style: const TextStyle(color: AppTheme.darkText, fontWeight: FontWeight.w600)),
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('End Time', style: TextStyle(fontWeight: FontWeight.w700)),
-                                  const SizedBox(height: 8),
-                                  GestureDetector(
-                                    onTap: _selectEndTime,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(14),
-                                      decoration: BoxDecoration(
-                                        border: Border.all(color: AppTheme.inputBorder),
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                      child: Text(_endTime.format(context)),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('End Time', style: TextStyle(fontWeight: FontWeight.w800, color: AppTheme.darkText)),
+                                const SizedBox(height: 8),
+                                GestureDetector(
+                                  onTap: _selectEndTime,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      border: Border.all(color: AppTheme.inputBorder.withOpacity(0.5)),
+                                      borderRadius: BorderRadius.circular(14),
                                     ),
+                                    child: Text(_endTime.format(context), style: const TextStyle(color: AppTheme.darkText, fontWeight: FontWeight.w600)),
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
+                      ),
                         const SizedBox(height: 20),
 
-                        // Consultation Type
-                        const Text('Consultation Type', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                      // Consultation Type
+                      const Text('Consultation Type', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppTheme.darkText)),
                         const SizedBox(height: 10),
                         Row(
                           children: ['chat', 'voice', 'video'].map((type) {
@@ -234,10 +266,10 @@ class _BookingScreenState extends State<BookingScreen> {
                                   margin: const EdgeInsets.symmetric(horizontal: 4),
                                   padding: const EdgeInsets.symmetric(vertical: 14),
                                   decoration: BoxDecoration(
-                                    color: selected ? AppTheme.accentPurple : Colors.transparent,
+                                    color: selected ? AppTheme.accentPurple : Colors.white,
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: selected ? AppTheme.accentPurple : AppTheme.inputBorder,
+                                      color: selected ? AppTheme.accentPurple : AppTheme.inputBorder.withOpacity(0.3),
                                     ),
                                   ),
                                   child: Column(
@@ -267,43 +299,51 @@ class _BookingScreenState extends State<BookingScreen> {
                         ),
                         const SizedBox(height: 24),
 
-                        // Total
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppTheme.cardBg,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text('Total Amount', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                              Text(
-                                'Rs. ${widget.advisor.hourlyRate.toStringAsFixed(0)}',
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppTheme.accentPurple,
-                                ),
+                      // Total
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.04),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Total Amount', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.darkText)),
+                            Text(
+                              'Rs. ${widget.advisor.hourlyRate.toStringAsFixed(0)}',
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                                color: AppTheme.accentPurple,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 24),
+                      ),
+                      const SizedBox(height: 30),
 
-                        PrimaryButton(
-                          label: 'Confirm Booking',
-                          isLoading: _isLoading,
-                          onPressed: _bookConsultation,
-                        ),
-                      ],
-                    ),
+                      PrimaryButton(
+                        label: 'Confirm Booking',
+                        isLoading: _isLoading,
+                        backgroundColor: AppTheme.goldDark,
+                        onPressed: _bookConsultation,
+                      ),
+                      const SizedBox(height: 20),
+                    ],
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

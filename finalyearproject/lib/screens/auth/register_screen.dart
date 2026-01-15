@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../widgets/widgets.dart';
 import '../../services/auth_service.dart';
-import '../../models/models.dart';
-import '../user/user_home_screen.dart';
-import '../advisor/advisor_home_screen.dart';
+import 'otp_verification_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -48,16 +46,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = false);
 
     if (result['success']) {
-      final user = result['user'] as UserModel;
       if (!mounted) return;
-      Navigator.pushAndRemoveUntil(
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['message'] ?? 'OTP sent details'), backgroundColor: AppTheme.success),
+      );
+      Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => user.role == 'advisor'
-              ? const AdvisorHomeScreen()
-              : const UserHomeScreen(),
-        ),
-        (route) => false,
+        MaterialPageRoute(builder: (_) => OtpVerificationScreen(email: _emailController.text.trim())),
       );
     } else {
       if (!mounted) return;

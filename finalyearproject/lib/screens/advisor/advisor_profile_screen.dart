@@ -71,7 +71,7 @@ class _AdvisorProfileScreenState extends State<AdvisorProfileScreen> {
             const SizedBox(height: 16),
             Text(
               widget.user?.fullName ?? 'Advisor',
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppTheme.darkText),
             ),
             const SizedBox(height: 6),
             Container(
@@ -195,13 +195,20 @@ class _ProfileMenuItem extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: ListTile(
-        leading: Icon(icon, color: AppTheme.gold),
-        title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
-        trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+        leading: Icon(icon, color: AppTheme.goldDark),
+        title: Text(title, style: const TextStyle(color: AppTheme.darkText, fontWeight: FontWeight.w600)),
+        trailing: const Icon(Icons.chevron_right, color: AppTheme.greyText),
         onTap: onTap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),

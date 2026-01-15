@@ -1,11 +1,14 @@
 class ApiConfig {
   // Change this to your computer's IP address when running on a physical device
   // Use 10.0.2.2 for Android emulator (maps to localhost)
-  static const String baseUrl = 'http://10.0.2.2:8000';
+  static const String baseUrl = 'http://127.0.0.1:8000';
 
   // Auth endpoints
   static const String register = '$baseUrl/auth/register';
+  static const String verifyRegistration = '$baseUrl/auth/verify-registration';
   static const String login = '$baseUrl/auth/login';
+  static const String forgotPassword = '$baseUrl/auth/forgot-password';
+  static const String resetPassword = '$baseUrl/auth/reset-password';
 
   // User endpoints
   static const String userMe = '$baseUrl/users/me';

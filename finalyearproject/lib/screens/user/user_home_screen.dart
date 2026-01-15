@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
-import '../../services/api_service.dart';
 import '../../models/models.dart';
-import '../../widgets/widgets.dart';
+import '../../services/api_service.dart';
 import 'browse_advisors_screen.dart';
 import 'user_bookings_screen.dart';
 import 'user_profile_screen.dart';
@@ -35,17 +34,15 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final screens = [
-      _HomeTab(user: _user),
+      _HomeTab(user: _user, onTabChange: (i) => setState(() => _currentIndex = i)),
       const BrowseAdvisorsScreen(),
       const UserBookingsScreen(),
       UserProfileScreen(user: _user, onLogout: _logout),
     ];
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppTheme.primaryGradient),
-        child: screens[_currentIndex],
-      ),
+      backgroundColor: const Color(0xFFF6F7F9),
+      body: screens[_currentIndex],
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -67,7 +64,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
           selectedFontSize: 12,
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.search_rounded), label: 'Advisors'),
+            BottomNavigationBarItem(icon: Icon(Icons.search_rounded), label: 'Explore'),
             BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Bookings'),
             BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
           ],
@@ -196,163 +193,304 @@ class _AuthWrapperState extends State<_AuthWrapper> {
   }
 }
 
-class _HomeTab extends StatelessWidget {
-  const _HomeTab({this.user});
+class _HomeTab extends StatefulWidget {
+  const _HomeTab({this.user, required this.onTabChange});
   final UserModel? user;
+  final Function(int) onTabChange;
+
+  @override
+  State<_HomeTab> createState() => _HomeTabState();
+}
+
+class _HomeTabState extends State<_HomeTab> {
+  List<AdvisorModel> _featuredAdvisors = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFeatured();
+  }
+
+  Future<void> _loadFeatured() async {
+    try {
+      final advisors = await ApiService.getAdvisors();
+      if (!mounted) return;
+      setState(() {
+        _featuredAdvisors = advisors.take(3).toList();
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Greeting
-            Row(
-              children: [
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: const BoxDecoration(
-                    color: AppTheme.gold,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      user?.fullName.isNotEmpty == true
-                          ? user!.fullName[0].toUpperCase()
-                          : '?',
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryDark,
+    return SingleChildScrollView(
+      child: Stack(
+        children: [
+          // Purple Top Background (Dynamic Height constraint)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 300, // Reduced height to prevent bleeding behind lower content
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Color(0xFF381b85), // Deep purple corresponding to the image
+              ),
+            ),
+          ),
+          
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Greeting row
+                  Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: AppTheme.gold,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppTheme.goldDark, width: 2),
+                          image: widget.user?.profileImage != null
+                              ? DecorationImage(
+                                  image: NetworkImage(widget.user!.profileImage!),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                        ),
+                        child: widget.user?.profileImage == null
+                            ? Center(
+                                child: Text(
+                                  widget.user?.fullName.isNotEmpty == true ? widget.user!.fullName[0].toUpperCase() : '?',
+                                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.primaryDark),
+                                ),
+                              )
+                            : null,
                       ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Welcome back,', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                            Text(
+                              widget.user?.fullName ?? 'User',
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Stack(
+                        children: [
+                          const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 28),
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Container(
+                              width: 10,
+                              height: 10,
+                              decoration: const BoxDecoration(color: AppTheme.gold, shape: BoxShape.circle),
+                            ),
+                          )
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Daily Insight Card
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          'Your Daily Insight',
+                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 10),
+                        Text(
+                          'Today brings opportunities for growth and self-discovery. The stars align in your favor for meaningful connections.',
+                          style: TextStyle(color: Colors.white, fontSize: 13, height: 1.5),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 24),
+
+                  // Overlapping Middle Action Buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildMiddleActionButton(
+                        icon: Icons.people_alt,
+                        label: 'Browse Advisors',
+                        color: AppTheme.accentPurple,
+                        onTap: () => widget.onTabChange(1),
+                      ),
+                      _buildMiddleActionButton(
+                        icon: Icons.book_online,
+                        label: 'My Bookings',
+                        color: AppTheme.goldDark,
+                        onTap: () => widget.onTabChange(2),
+                      ),
+                      _buildMiddleActionButton(
+                        icon: Icons.chat_bubble,
+                        label: 'Chat',
+                        color: const Color(0xFF904CEE),
+                        onTap: () => widget.onTabChange(2),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Featured Section Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
-                        'Namaste! 🙏',
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                        'Featured Astrologers',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.darkText),
                       ),
-                      Text(
-                        user?.fullName ?? 'User',
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
+                      GestureDetector(
+                        onTap: () => widget.onTabChange(1),
+                        child: const Text(
+                          'View All',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.lightPurple),
                         ),
                       ),
                     ],
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.notifications_rounded, color: AppTheme.gold),
-                  onPressed: () {},
-                ),
-              ],
-            ),
-            const SizedBox(height: 28),
-
-            // Quick Actions
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF7B4FD4), Color(0xFF4A2080)],
-                ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primaryDark.withOpacity(0.3),
-                    blurRadius: 15,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '✨ Find Your Guru',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Connect with verified astrologers for personalized consultations.',
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
                   const SizedBox(height: 16),
-                  SizedBox(
+
+                  // Featured List
+                  _isLoading
+                      ? const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()))
+                      : _featuredAdvisors.isEmpty
+                          ? const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 20),
+                              child: Center(
+                                child: Text('No featured advisors available yet.', style: TextStyle(color: AppTheme.greyText)),
+                              ),
+                            )
+                          : Column(
+                              children: _featuredAdvisors.map((advisor) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: _WidgetRefCustomAdvisorCard(
+                                    advisor: advisor,
+                                    onTap: () {
+                                      // Navigation handled later
+                                    },
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                  
+                  const SizedBox(height: 12),
+
+                  // Get Birth Chart Banner Card
+                  Container(
                     width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        // Navigate to Browse Advisors tab
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.gold,
-                        foregroundColor: AppTheme.primaryDark,
-                      ),
-                      child: const Text('Browse Advisors'),
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [Color(0xFF5324A3), Color(0xFF812EBA)]),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Stack(
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Get Your Birth Chart',
+                              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900),
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Unlock personalized insights',
+                              style: TextStyle(color: Colors.white70, fontSize: 13),
+                            ),
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: AppTheme.goldDark,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Text(
+                                'Generate Now',
+                                style: TextStyle(color: AppTheme.primaryDark, fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Positioned(
+                          right: 0,
+                          bottom: 0,
+                          child: Icon(Icons.pie_chart, color: Colors.white24, size: 80),
+                        ),
+                      ],
                     ),
                   ),
+                  const SizedBox(height: 30),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+          ),
+        ],
+      ),
+    );
+  }
 
-            // Features Grid
-            const Text(
-              'Quick Actions',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
+  Widget _buildMiddleActionButton({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.28,
+        height: 100,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
             ),
-            const SizedBox(height: 14),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              mainAxisSpacing: 14,
-              crossAxisSpacing: 14,
-              childAspectRatio: 1.4,
-              children: [
-                _QuickActionCard(
-                  icon: Icons.search,
-                  title: 'Find Advisors',
-                  color: const Color(0xFF6B3FA0),
-                  onTap: () {},
-                ),
-                _QuickActionCard(
-                  icon: Icons.calendar_today,
-                  title: 'My Bookings',
-                  color: const Color(0xFF2196F3),
-                  onTap: () {},
-                ),
-                _QuickActionCard(
-                  icon: Icons.chat_bubble,
-                  title: 'Messages',
-                  color: const Color(0xFF4CAF50),
-                  onTap: () {},
-                ),
-                _QuickActionCard(
-                  icon: Icons.history,
-                  title: 'History',
-                  color: const Color(0xFFFF9800),
-                  onTap: () {},
-                ),
-              ],
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.darkText),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -361,18 +499,14 @@ class _HomeTab extends StatelessWidget {
   }
 }
 
-class _QuickActionCard extends StatelessWidget {
-  const _QuickActionCard({
-    required this.icon,
-    required this.title,
-    required this.color,
-    this.onTap,
-  });
+class _WidgetRefCustomAdvisorCard extends StatelessWidget {
+  final AdvisorModel advisor;
+  final VoidCallback onTap;
 
-  final IconData icon;
-  final String title;
-  final Color color;
-  final VoidCallback? onTap;
+  const _WidgetRefCustomAdvisorCard({
+    required this.advisor,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -381,21 +515,108 @@ class _QuickActionCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: color.withOpacity(0.3)),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: Colors.white, size: 32),
-            const SizedBox(height: 10),
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    width: 65,
+                    height: 65,
+                    color: Colors.grey[200],
+                    child: advisor.user?.profileImage != null
+                        ? Image.network(advisor.user!.profileImage!, fit: BoxFit.cover)
+                        : Icon(Icons.person, size: 30, color: Colors.grey[400]),
+                  ),
+                ),
+                Positioned(
+                  bottom: -2,
+                  right: -2,
+                  child: Container(
+                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                    child: const Icon(Icons.check_circle, size: 18, color: Color(0xFF00C853)),
+                  ),
+                )
+              ],
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          advisor.user?.fullName ?? 'Unknown',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.darkText),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    advisor.specialization ?? 'Astrology',
+                    style: const TextStyle(fontSize: 12, color: AppTheme.greyText),
+                    maxLines: 1,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.star, color: AppTheme.goldDark, size: 14),
+                      const SizedBox(width: 2),
+                      Text(
+                        advisor.rating.toStringAsFixed(1),
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        ' (${advisor.totalReviews})',
+                        style: const TextStyle(fontSize: 11, color: AppTheme.greyText),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.work_outline, color: AppTheme.inputBorder, size: 12),
+                      const SizedBox(width: 2),
+                      Text(
+                        '${advisor.experienceYears} years exp',
+                        style: const TextStyle(fontSize: 11, color: AppTheme.greyText),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(color: const Color(0xFFE2F6EB), borderRadius: BorderRadius.circular(20)),
+                        child: const Text('Available Now', style: TextStyle(color: Color(0xFF00C853), fontSize: 10, fontWeight: FontWeight.w700)),
+                      ),
+                      const SizedBox(width: 12),
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(text: '₹${advisor.hourlyRate.toInt()}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.darkText)),
+                            const TextSpan(text: '/session', style: TextStyle(fontSize: 11, color: AppTheme.greyText)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],

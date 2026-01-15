@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'config/theme.dart';
 import 'services/auth_service.dart';
-import 'models/models.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/user/user_home_screen.dart';
@@ -22,9 +21,6 @@ class MyApp extends StatelessWidget {
       title: 'Sajelo Guru',
       theme: AppTheme.theme,
       home: const SplashScreen(),
-      routes: {
-        '/': (context) => const AuthScreen(),
-      },
     );
   }
 }

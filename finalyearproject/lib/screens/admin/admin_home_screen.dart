@@ -259,7 +259,7 @@ class _ManageUsersTabState extends State<_ManageUsersTab> {
                               await ApiService.toggleUserActive(user.id);
                               _loadUsers();
                             },
-                            activeColor: AppTheme.success,
+                            activeThumbColor: AppTheme.success,
                           ),
                         ),
                       );

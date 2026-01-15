@@ -6,6 +6,8 @@ import '../../models/models.dart';
 import '../user/user_home_screen.dart';
 import '../advisor/advisor_home_screen.dart';
 import '../admin/admin_home_screen.dart';
+import 'otp_verification_screen.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -52,6 +54,13 @@ class _LoginScreenState extends State<LoginScreen> {
           backgroundColor: AppTheme.error,
         ),
       );
+      
+      if (result['message'] != null && result['message'].toString().contains('Email is not verified')) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => OtpVerificationScreen(email: _emailController.text.trim())),
+        );
+      }
     }
   }
 
@@ -119,6 +128,22 @@ class _LoginScreenState extends State<LoginScreen> {
             label: 'Login',
             isLoading: _isLoading,
             onPressed: _handleLogin,
+          ),
+          const SizedBox(height: 12),
+          TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+              );
+            },
+            child: const Text(
+              'Forgot Password?',
+              style: TextStyle(
+                color: AppTheme.accentPurple,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),

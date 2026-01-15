@@ -1,17 +1,31 @@
 # final_year_project
 
-A new Flutter project.
+Flutter app with Android Studio used only for Android hosting tasks such as the emulator, SDK tools, and Gradle/JDK.
 
-## Getting Started
+## Android Studio Role
 
-This project is a starting point for a Flutter application.
+Use Android Studio for:
 
-A few resources to get you started if this is your first Flutter project:
+- creating or managing Android emulators
+- Android SDK updates
+- Gradle sync or Android-specific inspection if needed
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+Use terminal or your preferred editor for normal development.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Local Commands
+
+From this project root:
+
+```powershell
+.\start-emulator.ps1
+.\run-android.ps1
+.\android-build.ps1
+```
+
+Notes:
+
+- `start-emulator.ps1` starts the first available AVD, or a named one: `.\start-emulator.ps1 Pixel_9`
+- `run-android.ps1` runs the Flutter app using Android Studio's bundled JDK
+- `android-build.ps1` runs `assembleDebug` by default, or any Gradle task such as `.\android-build.ps1 installDebug`
+
+If no emulator exists yet, create one in Android Studio Device Manager first.

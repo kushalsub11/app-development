@@ -53,7 +53,7 @@ class _AdvisorBookingsScreenState extends State<AdvisorBookingsScreen> {
             padding: EdgeInsets.fromLTRB(20, 20, 20, 16),
             child: Text(
               'Client Bookings',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppTheme.darkText),
             ),
           ),
           Expanded(

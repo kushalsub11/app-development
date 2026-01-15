@@ -24,6 +24,21 @@ class UserLogin(BaseModel):
     password: str
 
 
+class EmailRequest(BaseModel):
+    email: EmailStr
+
+
+class VerifyOTP(BaseModel):
+    email: EmailStr
+    otp: str
+
+
+class ResetPassword(BaseModel):
+    email: EmailStr
+    otp: str
+    new_password: str = Field(..., min_length=6)
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
