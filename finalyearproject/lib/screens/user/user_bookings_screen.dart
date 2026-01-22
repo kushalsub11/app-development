@@ -3,6 +3,8 @@ import '../../config/theme.dart';
 import '../../services/api_service.dart';
 import '../../models/models.dart';
 import '../../widgets/widgets.dart';
+import 'chat_screen.dart';
+import '../../services/auth_service.dart';
 
 class UserBookingsScreen extends StatefulWidget {
   const UserBookingsScreen({super.key});
@@ -14,6 +16,7 @@ class UserBookingsScreen extends StatefulWidget {
 class _UserBookingsScreenState extends State<UserBookingsScreen> {
   List<BookingModel> _bookings = [];
   bool _isLoading = true;
+  UserModel? _currentUser;
 
   @override
   void initState() {
@@ -22,8 +25,10 @@ class _UserBookingsScreenState extends State<UserBookingsScreen> {
   }
 
   Future<void> _loadBookings() async {
+    final user = await ApiService.getCurrentUser();
     final bookings = await ApiService.getMyBookings();
     setState(() {
+      _currentUser = user;
       _bookings = bookings;
       _isLoading = false;
     });
@@ -83,14 +88,34 @@ class _UserBookingsScreenState extends State<UserBookingsScreen> {
                                         child: const Text('Cancel', style: TextStyle(color: AppTheme.error)),
                                       ),
                                     ]
-                                  : b.status == 'completed'
+                                  : b.status == 'confirmed'
                                       ? [
-                                          TextButton(
-                                            onPressed: () => _showReviewDialog(b),
-                                            child: const Text('Review', style: TextStyle(color: AppTheme.accentPurple)),
+                                          ElevatedButton(
+                                            onPressed: () {
+                                              if (_currentUser == null) return;
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => ChatScreen(
+                                                    booking: b,
+                                                    otherUserName: 'Astrologer',
+                                                    currentUserId: _currentUser!.id,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentPurple),
+                                            child: const Text('Join Chat'),
                                           ),
                                         ]
-                                      : null,
+                                      : b.status == 'completed'
+                                          ? [
+                                              TextButton(
+                                                onPressed: () => _showReviewDialog(b),
+                                                child: const Text('Review', style: TextStyle(color: AppTheme.accentPurple)),
+                                              ),
+                                            ]
+                                          : null,
                             );
                           },
                         ),

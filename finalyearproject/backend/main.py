@@ -11,7 +11,10 @@ from routers import (
     report_router,
     payment_router,
     admin_router,
+    chat_router,
+    call_router,
 )
+
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -40,6 +43,9 @@ app.include_router(review_router.router)
 app.include_router(report_router.router)
 app.include_router(payment_router.router)
 app.include_router(admin_router.router)
+app.include_router(chat_router.router)
+app.include_router(call_router.router)
+
 
 
 @app.get("/")

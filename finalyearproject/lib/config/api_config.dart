@@ -36,4 +36,18 @@ class ApiConfig {
 
   // Admin endpoints
   static const String adminDashboard = '$baseUrl/admin/dashboard';
+
+  // Chat endpoints
+  static const String wsBaseUrl = 'ws://127.0.0.1:8000';
+  static const String chatRoom = '$baseUrl/chat/room/booking';
+  static const String chatWs = '$wsBaseUrl/chat/ws';
+  
+  // Call endpoints
+  static const String initiateCall = '$baseUrl/call/initiate';
+  static const String endCall = '$baseUrl/call/end';
+
+  // Khalti endpoints
+  static const String khaltiInitiate = '$baseUrl/payments/khalti/initiate/';
+  static const String khaltiVerify = '$baseUrl/payments/khalti/verify';
 }
+

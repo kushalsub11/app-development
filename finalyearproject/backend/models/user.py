@@ -177,7 +177,7 @@ class ChatRoom(Base):
     __tablename__ = "chat_rooms"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=False)
+    booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=False, unique=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     advisor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     is_active = Column(Boolean, default=True)
@@ -185,6 +185,22 @@ class ChatRoom(Base):
 
     # Relationships
     booking = relationship("Booking", back_populates="chat_room")
+    messages = relationship("ChatMessage", back_populates="room", cascade="all, delete")
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    room_id = Column(Integer, ForeignKey("chat_rooms.id"), nullable=False)
+    sender_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    content = Column(Text, nullable=False)
+    timestamp = Column(DateTime, server_default=func.now())
+    is_read = Column(Boolean, default=False)
+
+    # Relationships
+    room = relationship("ChatRoom", back_populates="messages")
+    sender = relationship("User", foreign_keys=[sender_id])
 
 
 class CallLog(Base):

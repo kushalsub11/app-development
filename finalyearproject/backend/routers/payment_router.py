@@ -1,8 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime
+import requests
+import json
 from config.database import get_db
+from config.settings import settings
 from models.user import User, Payment, Booking, BookingStatus, PaymentStatus
 from schemas.user_schema import PaymentCreate, PaymentResponse
 from middleware.auth_middleware import get_current_user, require_role
@@ -10,7 +13,192 @@ from middleware.auth_middleware import get_current_user, require_role
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
 
-@router.post("/", response_model=PaymentResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/khalti/initiate/{booking_id}")
+async def initiate_khalti_payment(
+    booking_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Initiate Khalti payment for a booking."""
+    # Verify booking exists and belongs to the user
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    if booking.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not your booking")
+    
+    # Amount in Paisa
+    amount_paisa = int(booking.amount * 100)
+
+    # Khalti Initiate URL
+    url = settings.KHALTI_INITIATE_URL
+    headers = {
+        "Authorization": settings.KHALTI_SECRET_KEY,
+        "Content-Type": "application/json",
+    }
+    
+    payload = {
+        "return_url": f"http://127.0.0.1:{getattr(settings, 'SERVER_PORT', 8000)}/payments/khalti/callback?booking_id={booking.id}", 
+        "website_url": "https://sajeloguru.com",
+        "amount": amount_paisa,
+        "purchase_order_id": str(booking.id),
+        "purchase_order_name": f"Consultation Booking #{booking.id}",
+        "customer_info": {
+            "name": current_user.full_name,
+            "email": current_user.email,
+            "phone": current_user.phone or "9800000000",
+        }
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        response_data = response.json()
+        if response.status_code == 200:
+            return response_data
+        else:
+            raise HTTPException(status_code=400, detail=response_data.get("detail", "Khalti initiation failed"))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+from fastapi.responses import HTMLResponse
+
+@router.get("/khalti/callback", response_class=HTMLResponse)
+async def khalti_callback(
+    request: Request,
+    booking_id: int,
+    pidx: str = None,
+    transaction_id: str = None,
+    tidx: str = None,
+    amount: int = None,
+    total_amount: int = None,
+    mobile: str = None,
+    status: str = None,
+    purchase_order_id: str = None,
+    purchase_order_name: str = None,
+    db: Session = Depends(get_db),
+):
+    """Callback from Khalti after payment redirection."""
+    # If redirection comes with status=Completed or we simply have a pidx
+    if pidx:
+        # We can verify it right here
+        url = settings.KHALTI_LOOKUP_URL
+        headers = {
+            "Authorization": settings.KHALTI_SECRET_KEY,
+            "Content-Type": "application/json",
+        }
+        payload = {"pidx": pidx}
+        
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            res_data = response.json()
+            
+            if response.status_code == 200 and res_data.get("status") == "Completed":
+                # Update DB
+                booking = db.query(Booking).filter(Booking.id == booking_id).first()
+                if booking:
+                    # Update Payment or Create if not exists
+                    payment = db.query(Payment).filter(Payment.booking_id == booking_id).first()
+                    if not payment:
+                        payment = Payment(
+                            booking_id=booking.id,
+                            user_id=booking.user_id,
+                            amount=booking.amount,
+                            transaction_id=pidx,
+                            payment_method="khalti",
+                            status=PaymentStatus.completed,
+                            paid_at=datetime.utcnow()
+                        )
+                        db.add(payment)
+                    else:
+                        payment.status = PaymentStatus.completed
+                        payment.transaction_id = pidx
+                        payment.paid_at = datetime.utcnow()
+                    
+                    booking.status = BookingStatus.confirmed
+                    db.commit()
+
+                return """
+                <html>
+                    <head><title>Payment Successful</title></head>
+                    <body style="font-family: sans-serif; text-align: center; padding-top: 100px;">
+                        <h1 style="color: #28a745;">Payment Successful!</h1>
+                        <p>Your booking has been confirmed. You can now close this window and return to the app.</p>
+                        <button onclick="window.close()" style="padding: 10px 20px; background: #5d3fd3; color: white; border: none; border-radius: 5px; cursor: pointer;">Close Window</button>
+                    </body>
+                </html>
+                """
+        except Exception as e:
+            print(f"Callback verification error: {e}")
+
+    return """
+    <html>
+        <head><title>Payment Failed</title></head>
+        <body style="font-family: sans-serif; text-align: center; padding-top: 100px;">
+            <h1 style="color: #dc3545;">Payment Verification Failed</h1>
+            <p>Something went wrong. Please check your transaction status in the app.</p>
+            <button onclick="window.close()" style="padding: 10px 20px; background: #5d3fd3; color: white; border: none; border-radius: 5px; cursor: pointer;">Go Back</button>
+        </body>
+    </html>
+    """
+
+
+@router.get("/khalti/verify")
+async def verify_khalti_payment(
+    pidx: str,
+    booking_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Verify Khalti payment status and update database."""
+    # Khalti Lookup URL
+    url = settings.KHALTI_LOOKUP_URL
+    headers = {
+        "Authorization": settings.KHALTI_SECRET_KEY,
+        "Content-Type": "application/json",
+    }
+    
+    payload = {"pidx": pidx}
+
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        response_data = response.json()
+        
+        if response.status_code == 200 and response_data.get("status") == "Completed":
+            # Update Payment/Booking table
+            booking = db.query(Booking).filter(Booking.id == booking_id).first()
+            if not booking:
+                raise HTTPException(status_code=404, detail="Booking not found")
+            
+            # Check if payment already exists
+            payment = db.query(Payment).filter(Payment.booking_id == booking_id).first()
+            if not payment:
+                payment = Payment(
+                    booking_id=booking.id,
+                    user_id=current_user.id,
+                    amount=booking.amount,
+                    transaction_id=pidx,
+                    payment_method="khalti",
+                    status=PaymentStatus.completed,
+                    paid_at=datetime.utcnow()
+                )
+                db.add(payment)
+            else:
+                payment.status = PaymentStatus.completed
+                payment.transaction_id = pidx
+                payment.paid_at = datetime.utcnow()
+            
+            booking.status = BookingStatus.confirmed
+            db.commit()
+            return {"success": True, "message": "Payment verified successfully", "booking_id": booking.id}
+        else:
+            return {"success": False, "message": "Payment not completed or verification failed", "data": response_data}
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("", response_model=PaymentResponse, status_code=status.HTTP_201_CREATED)
 async def create_payment(
     payment_data: PaymentCreate,
     current_user: User = Depends(get_current_user),
@@ -57,7 +245,7 @@ async def get_my_payments(
     return [PaymentResponse.model_validate(p) for p in payments]
 
 
-@router.get("/", response_model=List[PaymentResponse])
+@router.get("", response_model=List[PaymentResponse])
 async def get_all_payments(
     current_user: User = Depends(require_role("admin")),
     db: Session = Depends(get_db),

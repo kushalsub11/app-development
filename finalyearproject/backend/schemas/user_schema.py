@@ -203,3 +203,29 @@ class PaymentResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ---------- Chat Schemas ----------
+class ChatMessageResponse(BaseModel):
+    id: int
+    room_id: int
+    sender_id: int
+    content: str
+    timestamp: datetime
+    is_read: bool
+
+    class Config:
+        from_attributes = True
+
+
+class ChatRoomResponse(BaseModel):
+    id: int
+    booking_id: int
+    user_id: int
+    advisor_id: int
+    is_active: bool
+    created_at: datetime
+    messages: Optional[list[ChatMessageResponse]] = []
+
+    class Config:
+        from_attributes = True

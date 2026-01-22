@@ -236,3 +236,66 @@ class PaymentModel {
     );
   }
 }
+
+class ChatMessageModel {
+  final int id;
+  final int roomId;
+  final int senderId;
+  final String content;
+  final String timestamp;
+  final bool isRead;
+
+  ChatMessageModel({
+    required this.id,
+    required this.roomId,
+    required this.senderId,
+    required this.content,
+    required this.timestamp,
+    required this.isRead,
+  });
+
+  factory ChatMessageModel.fromJson(Map<String, dynamic> json) {
+    return ChatMessageModel(
+      id: json['id'],
+      roomId: json['room_id'],
+      senderId: json['sender_id'],
+      content: json['content'],
+      timestamp: json['timestamp'],
+      isRead: json['is_read'] ?? false,
+    );
+  }
+}
+
+class ChatRoomModel {
+  final int id;
+  final int bookingId;
+  final int userId;
+  final int advisorId;
+  final bool isActive;
+  final String createdAt;
+  final List<ChatMessageModel> messages;
+
+  ChatRoomModel({
+    required this.id,
+    required this.bookingId,
+    required this.userId,
+    required this.advisorId,
+    required this.isActive,
+    required this.createdAt,
+    required this.messages,
+  });
+
+  factory ChatRoomModel.fromJson(Map<String, dynamic> json) {
+    return ChatRoomModel(
+      id: json['id'],
+      bookingId: json['booking_id'],
+      userId: json['user_id'],
+      advisorId: json['advisor_id'],
+      isActive: json['is_active'] ?? true,
+      createdAt: json['created_at'],
+      messages: json['messages'] != null 
+          ? (json['messages'] as List).map((i) => ChatMessageModel.fromJson(i)).toList() 
+          : [],
+    );
+  }
+}

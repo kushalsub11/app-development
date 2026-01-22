@@ -10,7 +10,7 @@ from middleware.auth_middleware import get_current_user, require_role
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
 
-@router.post("/", response_model=BookingResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=BookingResponse, status_code=status.HTTP_201_CREATED)
 async def create_booking(
     booking_data: BookingCreate,
     current_user: User = Depends(get_current_user),

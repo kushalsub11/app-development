@@ -313,4 +313,92 @@ class ApiService {
     }
     return [];
   }
+
+  // ---------- Chat APIs ----------
+  static Future<ChatRoomModel?> getOrCreateChatRoom(int bookingId) async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.get(
+        Uri.parse('${ApiConfig.chatRoom}/$bookingId'),
+        headers: headers,
+      );
+      if (response.statusCode == 200) {
+        return ChatRoomModel.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      print('Error getting chat room: $e');
+    }
+    return null;
+  }
+
+  // ---------- Call APIs ----------
+  static Future<Map<String, dynamic>?> initiateCall(int bookingId, String type) async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.post(
+        Uri.parse(ApiConfig.initiateCall),
+        headers: headers,
+        body: jsonEncode({
+          'booking_id': bookingId,
+          'call_type': type,
+        }),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        print('Error initiating call: Status ${response.statusCode}, Body: ${response.body}');
+      }
+    } catch (e) {
+      print('Error initiating call (Network Exception): $e');
+    }
+    return null;
+  }
+
+  static Future<bool> endCall(int callLogId, int durationSeconds) async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.post(
+        Uri.parse(ApiConfig.endCall),
+        headers: headers,
+        body: jsonEncode({
+          'call_log_id': callLogId,
+          'duration_seconds': durationSeconds,
+        }),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // ---------- Khalti APIs ----------
+  static Future<Map<String, dynamic>?> initiateKhaltiPayment(int bookingId) async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.post(
+        Uri.parse('${ApiConfig.khaltiInitiate}$bookingId'),
+        headers: headers,
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (e) {
+      print('Error initiating Khalti payment: $e');
+    }
+    return null;
+  }
+
+  static Future<Map<String, dynamic>> verifyKhaltiPayment(String pidx, int bookingId) async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.get(
+        Uri.parse('${ApiConfig.khaltiVerify}?pidx=$pidx&booking_id=$bookingId'),
+        headers: headers,
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': 'Connection error: $e'};
+    }
+  }
 }
+

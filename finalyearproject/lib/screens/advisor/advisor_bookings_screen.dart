@@ -3,6 +3,8 @@ import '../../config/theme.dart';
 import '../../services/api_service.dart';
 import '../../models/models.dart';
 import '../../widgets/widgets.dart';
+import '../user/chat_screen.dart';
+import '../../services/auth_service.dart';
 
 class AdvisorBookingsScreen extends StatefulWidget {
   const AdvisorBookingsScreen({super.key});
@@ -14,6 +16,7 @@ class AdvisorBookingsScreen extends StatefulWidget {
 class _AdvisorBookingsScreenState extends State<AdvisorBookingsScreen> {
   List<BookingModel> _bookings = [];
   bool _isLoading = true;
+  UserModel? _currentUser;
 
   @override
   void initState() {
@@ -22,8 +25,10 @@ class _AdvisorBookingsScreenState extends State<AdvisorBookingsScreen> {
   }
 
   Future<void> _loadBookings() async {
+    final user = await ApiService.getCurrentUser();
     final bookings = await ApiService.getAdvisorBookings();
     setState(() {
+      _currentUser = user;
       _bookings = bookings;
       _isLoading = false;
     });
@@ -97,6 +102,24 @@ class _AdvisorBookingsScreenState extends State<AdvisorBookingsScreen> {
                                     ]
                                   : b.status == 'confirmed'
                                       ? [
+                                          ElevatedButton(
+                                            onPressed: () {
+                                              if (_currentUser == null) return;
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => ChatScreen(
+                                                    booking: b,
+                                                    otherUserName: 'Client #${b.userId}',
+                                                    currentUserId: _currentUser!.id,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentPurple),
+                                            child: const Icon(Icons.chat, color: Colors.white, size: 20),
+                                          ),
+                                          const SizedBox(width: 8),
                                           ElevatedButton(
                                             onPressed: () => _updateStatus(b.id, 'completed'),
                                             style: ElevatedButton.styleFrom(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../config/theme.dart';
 import '../../services/api_service.dart';
 import '../../models/models.dart';
@@ -54,26 +55,87 @@ class _BookingScreenState extends State<BookingScreen> {
       'amount': widget.advisor.hourlyRate,
     });
 
-    setState(() => _isLoading = false);
-
     if (result['success']) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Booking created successfully!'),
-          backgroundColor: AppTheme.success,
-        ),
-      );
-      Navigator.pop(context);
+      final booking = result['booking'] as BookingModel;
+      
+      // Initiate Khalti Payment
+      final khaltiResult = await ApiService.initiateKhaltiPayment(booking.id);
+      
+      setState(() => _isLoading = false);
+
+      if (khaltiResult != null && khaltiResult['payment_url'] != null) {
+        final url = Uri.parse(khaltiResult['payment_url']);
+        if (await canLaunchUrl(url)) {
+          await launchUrl(url, mode: LaunchMode.externalApplication);
+          
+          // Show verification dialog
+          if (mounted) {
+            _showVerifyDialog(booking.id, khaltiResult['pidx']);
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Could not launch payment URL')),
+            );
+          }
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to initiate Khalti payment')),
+          );
+        }
+      }
     } else {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message']),
-          backgroundColor: AppTheme.error,
-        ),
-      );
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message']),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+      }
     }
+  }
+
+  void _showVerifyDialog(int bookingId, String pidx) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Payment Initiated'),
+        content: const Text('Please complete the payment in the opened browser window and then click verify.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              // Show loading in dialog if possible, or just call verify
+              final res = await ApiService.verifyKhaltiPayment(pidx, bookingId);
+              if (res['success']) {
+                if (mounted) {
+                  Navigator.pop(ctx); // Close dialog
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Payment Verified! Booking Confirmed.'), backgroundColor: AppTheme.success),
+                  );
+                  Navigator.pop(context); // Go back from booking screen
+                }
+              } else {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(res['message'] ?? 'Verification failed'), backgroundColor: AppTheme.error),
+                  );
+                }
+              }
+            },
+            child: const Text('I have paid, Verify now'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

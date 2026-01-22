@@ -10,3 +10,9 @@ pydantic
 pydantic-settings
 python-dotenv
 cryptography
+requests
+email-validator
+agora-token-builder
+
+
+

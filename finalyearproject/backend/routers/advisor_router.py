@@ -11,7 +11,7 @@ from middleware.auth_middleware import get_current_user, require_role
 router = APIRouter(prefix="/advisors", tags=["Advisors"])
 
 
-@router.get("/", response_model=List[AdvisorProfileResponse])
+@router.get("", response_model=List[AdvisorProfileResponse])
 async def get_all_advisors(db: Session = Depends(get_db)):
     """Get all verified advisors (public endpoint)."""
     advisors = (
