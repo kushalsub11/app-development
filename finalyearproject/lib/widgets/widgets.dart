@@ -404,3 +404,29 @@ class EmptyState extends StatelessWidget {
     );
   }
 }
+// ---------- Responsive Container ----------
+class ResponsiveContainer extends StatelessWidget {
+  const ResponsiveContainer({
+    super.key,
+    required this.child,
+    this.maxWidth = 450,
+    this.padding = const EdgeInsets.symmetric(horizontal: 20),
+  });
+
+  final Widget child;
+  final double maxWidth;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: Padding(
+          padding: padding,
+          child: child,
+        ),
+      ),
+    );
+  }
+}

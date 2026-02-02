@@ -70,6 +70,10 @@ async def get_or_create_room(
     if not (is_user or is_advisor):
         raise HTTPException(status_code=403, detail="Not authorized to access this chat")
 
+    # Check consultation type
+    if booking.consultation_type.value != "chat":
+        raise HTTPException(status_code=403, detail="This booking is not for a chat consultation.")
+
     room = db.query(ChatRoom).options(
         joinedload(ChatRoom.messages)
     ).filter(ChatRoom.booking_id == booking_id).first()

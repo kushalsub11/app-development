@@ -27,10 +27,36 @@ class ApiService {
         headers: headers,
         body: jsonEncode(data),
       );
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        final userData = jsonDecode(response.body);
+        await AuthService.saveUser(userData);
+        return true;
+      }
+      return false;
     } catch (e) {
       return false;
     }
+  }
+
+  static Future<UserModel?> uploadProfileImage(String filePath) async {
+    try {
+      final token = await AuthService.getToken();
+      final request = http.MultipartRequest('POST', Uri.parse(ApiConfig.uploadProfileImage));
+      request.headers['Authorization'] = 'Bearer $token';
+      request.files.add(await http.MultipartFile.fromPath('file', filePath));
+      
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      
+      if (response.statusCode == 200) {
+        final userData = jsonDecode(response.body);
+        await AuthService.saveUser(userData);
+        return UserModel.fromJson(userData);
+      }
+    } catch (e) {
+      print('Error uploading profile image: $e');
+    }
+    return null;
   }
 
   // ---------- Advisor APIs ----------
@@ -71,6 +97,19 @@ class ApiService {
     } catch (e) {
       return false;
     }
+  }
+
+  static Future<Map<String, dynamic>?> getAdvisorStats() async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.get(Uri.parse(ApiConfig.advisorStats), headers: headers);
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (e) {
+      print('Error getting advisor stats: $e');
+    }
+    return null;
   }
 
   // ---------- Booking APIs ----------
@@ -166,6 +205,20 @@ class ApiService {
     return [];
   }
 
+  static Future<List<ReportModel>> getMyReports() async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.get(Uri.parse(ApiConfig.myReports), headers: headers);
+      if (response.statusCode == 200) {
+        final List list = jsonDecode(response.body);
+        return list.map((e) => ReportModel.fromJson(e)).toList();
+      }
+    } catch (e) {
+      print('Error getting my reports: $e');
+    }
+    return [];
+  }
+
   // ---------- Report APIs ----------
   static Future<Map<String, dynamic>> createReport(Map<String, dynamic> data) async {
     try {
@@ -186,22 +239,18 @@ class ApiService {
   }
 
   // ---------- Payment APIs ----------
-  static Future<Map<String, dynamic>> createPayment(Map<String, dynamic> data) async {
+  static Future<List<PaymentModel>> getMyPayments() async {
     try {
       final headers = await AuthService.getAuthHeaders();
-      final response = await http.post(
-        Uri.parse(ApiConfig.payments),
-        headers: headers,
-        body: jsonEncode(data),
-      );
-      final body = jsonDecode(response.body);
-      if (response.statusCode == 201) {
-        return {'success': true};
+      final response = await http.get(Uri.parse(ApiConfig.myPayments), headers: headers);
+      if (response.statusCode == 200) {
+        final List list = jsonDecode(response.body);
+        return list.map((e) => PaymentModel.fromJson(e)).toList();
       }
-      return {'success': false, 'message': body['detail'] ?? 'Payment failed'};
     } catch (e) {
-      return {'success': false, 'message': 'Connection error: $e'};
+      print('Error getting payments: $e');
     }
+    return [];
   }
 
   // ---------- Admin APIs ----------
@@ -400,5 +449,76 @@ class ApiService {
       return {'success': false, 'message': 'Connection error: $e'};
     }
   }
-}
 
+  // ---------- Misc APIs ----------
+  static Future<Map<String, String>> getDailyCalendar() async {
+    try {
+      final response = await http.get(Uri.parse(ApiConfig.dailyInsight));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'nepali_date': data['nepali_date']?.toString() ?? 'Date unavailable',
+          'tithi': data['tithi']?.toString() ?? '',
+          'panchang': data['panchang']?.toString() ?? '',
+          'english_date': data['english_date']?.toString() ?? 'Loading...',
+        };
+      }
+    } catch (e) {
+      print('Error fetching daily calendar: $e');
+    }
+    return {
+      'nepali_date': 'Date unavailable',
+      'tithi': '',
+      'panchang': '',
+      'english_date': '',
+    };
+  }
+
+  static Future<List<dynamic>> getDailyHoroscopes() async {
+    try {
+      final response = await http.get(Uri.parse(ApiConfig.horoscopeDaily));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> rawHoroscopes = data['horoscopes'] ?? [];
+        
+        // Map keys to match frontend expectations
+        return rawHoroscopes.map((h) => {
+          'sign': _getNepaliSignName(h['name']), // Map English name to Nepali
+          'content': h['text']
+        }).toList();
+      }
+    } catch (e) {
+      print('Error fetching daily horoscopes: $e');
+    }
+    return [];
+  }
+
+  static Future<Map<String, dynamic>> generateBirthChart({
+    required String dob,
+    required String tob,
+    required double lat,
+    required double lon,
+    double timezone = 5.75,
+  }) async {
+    try {
+      final query = 'dob=$dob&tob=$tob&lat=$lat&lon=$lon&tz=$timezone';
+      final response = await http.get(Uri.parse('${ApiConfig.birthChart}?$query'));
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (e) {
+      print('Error generating birth chart: $e');
+    }
+    return {'success': false, 'error': 'Could not generate chart'};
+  }
+
+  static String _getNepaliSignName(String englishName) {
+    final Map<String, String> mapping = {
+      'Mesh': 'मेष', 'Brush': 'वृष', 'Mithun': 'मिथुन', 'Karkat': 'कर्कट',
+      'Singha': 'सिंह', 'Kanya': 'कन्या', 'Tula': 'तुला', 'Brischik': 'वृश्चिक',
+      'Dhanu': 'धनु', 'Makar': 'मकर', 'Kumbha': 'कुम्भ', 'Meen': 'मीन'
+    };
+    return mapping[englishName] ?? englishName;
+  }
+}

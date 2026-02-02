@@ -56,7 +56,7 @@ class AuthService {
 
       if (response.statusCode == 200) {
         await _saveToken(data['access_token']);
-        await _saveUser(data['user']);
+        await saveUser(data['user']);
         return {'success': true, 'user': UserModel.fromJson(data['user'])};
       } else {
         return {'success': false, 'message': data['detail'] ?? 'Verification failed'};
@@ -112,13 +112,13 @@ class AuthService {
           'email': email,
           'password': password,
         }),
-      );
+      ).timeout(const Duration(seconds: 10));
 
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
         await _saveToken(data['access_token']);
-        await _saveUser(data['user']);
+        await saveUser(data['user']);
         return {'success': true, 'user': UserModel.fromJson(data['user'])};
       } else {
         return {
@@ -142,7 +142,7 @@ class AuthService {
     return prefs.getString(_tokenKey);
   }
 
-  static Future<void> _saveUser(Map<String, dynamic> user) async {
+  static Future<void> saveUser(Map<String, dynamic> user) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_userKey, jsonEncode(user));
   }

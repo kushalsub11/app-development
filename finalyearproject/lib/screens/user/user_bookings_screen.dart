@@ -90,23 +90,36 @@ class _UserBookingsScreenState extends State<UserBookingsScreen> {
                                     ]
                                   : b.status == 'confirmed'
                                       ? [
-                                          ElevatedButton(
-                                            onPressed: () {
-                                              if (_currentUser == null) return;
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (_) => ChatScreen(
-                                                    booking: b,
-                                                    otherUserName: 'Astrologer',
-                                                    currentUserId: _currentUser!.id,
+                                          if (b.consultationType == 'chat')
+                                            ElevatedButton(
+                                              onPressed: () {
+                                                if (_currentUser == null) return;
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (_) => ChatScreen(
+                                                      booking: b,
+                                                      otherUserName: 'Astrologer',
+                                                      currentUserId: _currentUser!.id,
+                                                    ),
                                                   ),
-                                                ),
-                                              );
-                                            },
-                                            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentPurple),
-                                            child: const Text('Join Chat'),
-                                          ),
+                                                );
+                                              },
+                                              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentPurple),
+                                              child: const Text('Join Chat'),
+                                            ),
+                                          if (b.consultationType != 'chat')
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                              decoration: BoxDecoration(color: AppTheme.info.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                                              child: Row(
+                                                children: [
+                                                  Icon(b.consultationType == 'video' ? Icons.videocam : Icons.phone, size: 16, color: AppTheme.info),
+                                                  const SizedBox(width: 8),
+                                                  Text(b.consultationType.toUpperCase(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.info)),
+                                                ],
+                                              ),
+                                            ),
                                         ]
                                       : b.status == 'completed'
                                           ? [

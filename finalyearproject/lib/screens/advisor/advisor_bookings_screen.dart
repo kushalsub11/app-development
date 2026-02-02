@@ -102,23 +102,36 @@ class _AdvisorBookingsScreenState extends State<AdvisorBookingsScreen> {
                                     ]
                                   : b.status == 'confirmed'
                                       ? [
-                                          ElevatedButton(
-                                            onPressed: () {
-                                              if (_currentUser == null) return;
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (_) => ChatScreen(
-                                                    booking: b,
-                                                    otherUserName: 'Client #${b.userId}',
-                                                    currentUserId: _currentUser!.id,
+                                          if (b.consultationType == 'chat')
+                                            ElevatedButton(
+                                              onPressed: () {
+                                                if (_currentUser == null) return;
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (_) => ChatScreen(
+                                                      booking: b,
+                                                      otherUserName: 'Client #${b.userId}',
+                                                      currentUserId: _currentUser!.id,
+                                                    ),
                                                   ),
-                                                ),
-                                              );
-                                            },
-                                            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentPurple),
-                                            child: const Icon(Icons.chat, color: Colors.white, size: 20),
-                                          ),
+                                                );
+                                              },
+                                              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentPurple),
+                                              child: const Icon(Icons.chat, color: Colors.white, size: 20),
+                                            ),
+                                          if (b.consultationType != 'chat')
+                                             Container(
+                                              padding: const EdgeInsets.all(8),
+                                              decoration: BoxDecoration(color: AppTheme.info.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                                              child: Row(
+                                                children: [
+                                                  Icon(b.consultationType == 'video' ? Icons.videocam : Icons.phone, size: 16, color: AppTheme.info),
+                                                  const SizedBox(width: 4),
+                                                  Text(b.consultationType.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.info)),
+                                                ],
+                                              ),
+                                            ),
                                           const SizedBox(width: 8),
                                           ElevatedButton(
                                             onPressed: () => _updateStatus(b.id, 'completed'),

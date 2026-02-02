@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
+import '../../services/api_service.dart';
 import '../../models/models.dart';
 import 'advisor_bookings_screen.dart';
 import 'advisor_profile_screen.dart';
@@ -63,12 +64,38 @@ class _AdvisorHomeScreenState extends State<AdvisorHomeScreen> {
   }
 }
 
-class _AdvisorHomeTab extends StatelessWidget {
+class _AdvisorHomeTab extends StatefulWidget {
   const _AdvisorHomeTab({this.user});
   final UserModel? user;
 
   @override
+  State<_AdvisorHomeTab> createState() => _AdvisorHomeTabState();
+}
+
+class _AdvisorHomeTabState extends State<_AdvisorHomeTab> {
+  Map<String, dynamic>? _stats;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    final stats = await ApiService.getAdvisorStats();
+    if (mounted) {
+      setState(() {
+        _stats = stats;
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) return const Center(child: CircularProgressIndicator());
+
     return SingleChildScrollView(
       child: Stack(
         children: [
@@ -102,17 +129,17 @@ class _AdvisorHomeTab extends StatelessWidget {
                           color: AppTheme.gold,
                           shape: BoxShape.circle,
                           border: Border.all(color: AppTheme.goldDark, width: 2),
-                          image: user?.profileImage != null
+                          image: widget.user?.profileImage != null
                               ? DecorationImage(
-                                  image: NetworkImage(user!.profileImage!),
+                                  image: NetworkImage(widget.user!.profileImage!),
                                   fit: BoxFit.cover,
                                 )
                               : null,
                         ),
-                        child: user?.profileImage == null
+                        child: widget.user?.profileImage == null
                             ? Center(
                                 child: Text(
-                                  user?.fullName.isNotEmpty == true ? user!.fullName[0].toUpperCase() : '?',
+                                  widget.user?.fullName.isNotEmpty == true ? widget.user!.fullName[0].toUpperCase() : '?',
                                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.primaryDark),
                                 ),
                               )
@@ -125,31 +152,18 @@ class _AdvisorHomeTab extends StatelessWidget {
                           children: [
                             const Text('Welcome back,', style: TextStyle(color: Colors.white70, fontSize: 13)),
                             Text(
-                              user?.fullName ?? 'Advisor',
+                              widget.user?.fullName ?? 'Advisor',
                               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                             ),
                           ],
                         ),
                       ),
-                      Stack(
-                        children: [
-                          const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 28),
-                          Positioned(
-                            right: 0,
-                            top: 0,
-                            child: Container(
-                              width: 10,
-                              height: 10,
-                              decoration: const BoxDecoration(color: AppTheme.gold, shape: BoxShape.circle),
-                            ),
-                          )
-                        ],
-                      ),
+                      const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 28),
                     ],
                   ),
                   const SizedBox(height: 24),
 
-                  // Dashboard Insight Card
+                  // Insight Card
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
@@ -161,12 +175,12 @@ class _AdvisorHomeTab extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: const [
                         Text(
-                          'Your Daily Summary',
+                          'Your Dashboard',
                           style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                         SizedBox(height: 10),
                         Text(
-                          'You have 2 upcoming consultations today. Keep inspiring those seeking guidance and answers.',
+                          'Keep track of your performance and bookings here. Use the actions below for management.',
                           style: TextStyle(color: Colors.white, fontSize: 13, height: 1.5),
                         ),
                       ],
@@ -174,53 +188,20 @@ class _AdvisorHomeTab extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
 
-                  // Overlapping Middle Action Buttons
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildMiddleActionButton(
-                        icon: Icons.calendar_month,
-                        label: 'Schedule',
-                        color: AppTheme.accentPurple,
-                        onTap: () {},
-                        context: context,
-                      ),
-                      _buildMiddleActionButton(
-                        icon: Icons.monetization_on,
-                        label: 'Earnings',
-                        color: AppTheme.goldDark,
-                        onTap: () {},
-                        context: context,
-                      ),
-                      _buildMiddleActionButton(
-                        icon: Icons.chat_bubble,
-                        label: 'Messages',
-                        color: const Color(0xFF904CEE),
-                        onTap: () {},
-                        context: context,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Quick Stats Header
-                  const Text('Quick Stats', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.darkText)),
-                  const SizedBox(height: 14),
-
-                  // Quick Stats Layer
+                  // Stats Layer
                   Row(
                     children: [
-                      Expanded(child: _StatCard(icon: Icons.calendar_today, title: 'Bookings', value: '12', color: AppTheme.info)),
+                      Expanded(child: _StatCard(icon: Icons.calendar_today, title: 'Bookings', value: '${_stats?['total_bookings'] ?? 0}', color: AppTheme.info)),
                       const SizedBox(width: 14),
-                      Expanded(child: _StatCard(icon: Icons.star, title: 'Rating', value: '4.8', color: AppTheme.goldDark)),
+                      Expanded(child: _StatCard(icon: Icons.star, title: 'Rating', value: '${_stats?['rating'] ?? 0.0}', color: AppTheme.goldDark)),
                     ],
                   ),
                   const SizedBox(height: 14),
                   Row(
                     children: [
-                      Expanded(child: _StatCard(icon: Icons.chat_bubble, title: 'Chats', value: '38', color: AppTheme.success)),
+                      Expanded(child: _StatCard(icon: Icons.reviews, title: 'Reviews', value: '${_stats?['total_reviews'] ?? 0}', color: AppTheme.success)),
                       const SizedBox(width: 14),
-                      Expanded(child: _StatCard(icon: Icons.account_balance_wallet, title: 'Revenue', value: '₹4k', color: AppTheme.accentPurple)),
+                      Expanded(child: _StatCard(icon: Icons.account_balance_wallet, title: 'Revenue', value: '₹${(_stats?['total_revenue'] ?? 0).toStringAsFixed(0)}', color: AppTheme.accentPurple)),
                     ],
                   ),
                   const SizedBox(height: 30),

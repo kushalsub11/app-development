@@ -127,3 +127,29 @@ async def verify_advisor(
     db.commit()
     db.refresh(advisor)
     return AdvisorProfileResponse.model_validate(advisor)
+
+
+@router.get("/me/stats")
+async def get_advisor_stats(
+    current_user: User = Depends(require_role("advisor")),
+    db: Session = Depends(get_db),
+):
+    """Get statistics for the current advisor."""
+    from models.user import Booking, Payment, Review
+    from sqlalchemy import func
+
+    advisor = db.query(AdvisorProfile).filter(AdvisorProfile.user_id == current_user.id).first()
+    if not advisor:
+         raise HTTPException(status_code=404, detail="Advisor not found")
+
+    total_bookings = db.query(Booking).filter(Booking.advisor_id == advisor.id).count()
+    
+    # Calculate revenue from successful payments
+    total_revenue = db.query(func.sum(Payment.amount)).join(Booking).filter(Booking.advisor_id == advisor.id).scalar() or 0.0
+
+    return {
+        "total_bookings": total_bookings,
+        "rating": advisor.rating,
+        "total_reviews": advisor.total_reviews,
+        "total_revenue": total_revenue,
+    }

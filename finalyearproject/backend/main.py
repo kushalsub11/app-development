@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from config.database import engine, Base
 from config.settings import settings
@@ -13,6 +14,8 @@ from routers import (
     admin_router,
     chat_router,
     call_router,
+    horoscope_router,
+    astro_router,
 )
 
 
@@ -24,6 +27,9 @@ app = FastAPI(
     description="Astrology Advisory System Backend API",
     version="1.0.0",
 )
+
+# Mount static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # CORS middleware
 app.add_middleware(
@@ -45,6 +51,8 @@ app.include_router(payment_router.router)
 app.include_router(admin_router.router)
 app.include_router(chat_router.router)
 app.include_router(call_router.router)
+app.include_router(astro_router.router)
+app.include_router(horoscope_router.router)
 
 
 

@@ -179,6 +179,24 @@ class _ChatScreenState extends State<ChatScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(
+              data['call_type'] == 'video' ? Icons.videocam : Icons.call,
+              color: AppTheme.accentPurple,
+            ),
+            const SizedBox(width: 10),
+            Text("Incoming ${data['call_type']} Call"),
+          ],
+        ),
+        content: Text("${widget.otherUserName} is calling you. Would you like to accept?"),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Send reject signal via WS
               _channel?.sink.add(jsonEncode({
                 "type": "call_reject",
                 "room_id": _room?.id,
@@ -187,7 +205,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 const SnackBar(content: Text('Call rejected')),
               );
             },
-            child: const Text("Reject", style: TextStyle(color: Colors.red)),
+            child: Text("Reject", style: TextStyle(color: Colors.red)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../services/api_service.dart';
 import '../../models/models.dart';
+import '../../widgets/widgets.dart';
 import 'advisor_detail_screen.dart';
 
 class BrowseAdvisorsScreen extends StatefulWidget {
@@ -77,170 +78,176 @@ class _BrowseAdvisorsScreenState extends State<BrowseAdvisorsScreen> {
               ),
               child: IconButton(
                 icon: const Icon(Icons.favorite, color: Colors.white, size: 20),
-                onPressed: () {},
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Favorites coming soon!')));
+                },
               ),
             ),
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Top Search and Categories Section
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
-            child: Column(
-              children: [
-                // Search Bar
-                Container(
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: TextField(
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: 'Search by name or specialization...',
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 14),
-                      prefixIcon: const Icon(Icons.search, color: Colors.white),
-                      border: InputBorder.none,
-                      filled: false,
+      body: ResponsiveContainer(
+        maxWidth: 600,
+        padding: EdgeInsets.zero,
+        child: Column(
+          children: [
+            // Top Search and Categories Section
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
+              child: Column(
+                children: [
+                  // Search Bar
+                  Container(
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                
-                // Categories List
-                SizedBox(
-                  height: 36,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _categories.length,
-                    separatorBuilder: (context, index) => const SizedBox(width: 8),
-                    itemBuilder: (context, index) {
-                      final category = _categories[index];
-                      final isSelected = _selectedCategory == category;
-                      return GestureDetector(
-                        onTap: () => setState(() => _selectedCategory = category),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: isSelected ? AppTheme.goldDark : Colors.white.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              if (isSelected) ...[
-                                const Icon(Icons.filter_alt, size: 16, color: AppTheme.primaryDark),
-                                const SizedBox(width: 4),
-                              ],
-                              Text(
-                                category,
-                                style: TextStyle(
-                                  color: isSelected ? AppTheme.primaryDark : Colors.white,
-                                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Main White Container for List
-          Expanded(
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFFF6F7F9), // Light background matching image
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(30),
-                  topRight: Radius.circular(30),
-                ),
-              ),
-              child: ClipRRect(
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(30),
-                  topRight: Radius.circular(30),
-                ),
-                child: Column(
-                  children: [
-                    // Result count and Sort Row
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 10),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text.rich(
-                            TextSpan(
-                              text: 'Showing ',
-                              style: const TextStyle(color: AppTheme.greyText, fontSize: 13),
-                              children: [
-                                TextSpan(
-                                  text: _isLoading ? '...' : '${_advisors.length}',
-                                  style: const TextStyle(fontWeight: FontWeight.w800, color: AppTheme.darkText),
-                                ),
-                                const TextSpan(text: ' advisors'),
-                              ],
-                            ),
-                          ),
-                          Row(
-                            children: [
-                              Icon(Icons.sort, size: 16, color: AppTheme.lightPurple),
-                              const SizedBox(width: 4),
-                              const Text(
-                                'Sort by',
-                                style: TextStyle(
-                                  color: AppTheme.lightPurple,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13,
-                                ),
-                              )
-                            ],
-                          )
-                        ],
+                    child: TextField(
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'Search by name or specialization...',
+                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 14),
+                        prefixIcon: const Icon(Icons.search, color: Colors.white),
+                        border: InputBorder.none,
+                        filled: false,
                       ),
                     ),
-
-                    // Advisor List
-                    Expanded(
-                      child: _isLoading
-                          ? const Center(child: CircularProgressIndicator())
-                          : ListView.builder(
-                              padding: const EdgeInsets.only(left: 20, right: 20, bottom: 30, top: 4),
-                              itemCount: _advisors.length,
-                              itemBuilder: (context, index) {
-                                final advisor = _advisors[index];
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 16),
-                                  child: _CustomAdvisorCard(
-                                    advisor: advisor,
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => AdvisorDetailScreen(advisor: advisor),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                );
-                              },
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Categories List
+                  SizedBox(
+                    height: 36,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _categories.length,
+                      separatorBuilder: (context, index) => const SizedBox(width: 8),
+                      itemBuilder: (context, index) {
+                        final category = _categories[index];
+                        final isSelected = _selectedCategory == category;
+                        return GestureDetector(
+                          onTap: () => setState(() => _selectedCategory = category),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: isSelected ? AppTheme.goldDark : Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(12),
                             ),
+                            child: Row(
+                              children: [
+                                if (isSelected) ...[
+                                  const Icon(Icons.filter_alt, size: 16, color: AppTheme.primaryDark),
+                                  const SizedBox(width: 4),
+                                ],
+                                Text(
+                                  category,
+                                  style: TextStyle(
+                                    color: isSelected ? AppTheme.primaryDark : Colors.white,
+                                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+  
+            // Main White Container for List
+            Expanded(
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF6F7F9), // Light background matching image
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(30),
+                    topRight: Radius.circular(30),
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(30),
+                    topRight: Radius.circular(30),
+                  ),
+                  child: Column(
+                    children: [
+                      // Result count and Sort Row
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 20, 24, 10),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text.rich(
+                              TextSpan(
+                                text: 'Showing ',
+                                style: const TextStyle(color: AppTheme.greyText, fontSize: 13),
+                                children: [
+                                  TextSpan(
+                                    text: _isLoading ? '...' : '${_advisors.length}',
+                                    style: const TextStyle(fontWeight: FontWeight.w800, color: AppTheme.darkText),
+                                  ),
+                                  const TextSpan(text: ' advisors'),
+                                ],
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Icon(Icons.sort, size: 16, color: AppTheme.lightPurple),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  'Sort by',
+                                  style: TextStyle(
+                                    color: AppTheme.lightPurple,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                  ),
+                                )
+                              ],
+                            )
+                          ],
+                        ),
+                      ),
+  
+                      // Advisor List
+                      Expanded(
+                        child: _isLoading
+                            ? const Center(child: CircularProgressIndicator())
+                            : ListView.builder(
+                                padding: const EdgeInsets.only(left: 20, right: 20, bottom: 30, top: 4),
+                                itemCount: _advisors.length,
+                                itemBuilder: (context, index) {
+                                  final advisor = _advisors[index];
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 16),
+                                    child: _CustomAdvisorCard(
+                                      advisor: advisor,
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => AdvisorDetailScreen(advisor: advisor),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

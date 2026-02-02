@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 from config.database import get_db
-from models.user import User, Booking, CallLog, CallStatus, ConsultationType, ChatRoom, ChatMessage
+from models.user import User, Booking, CallStatus, ConsultationType, ChatRoom, ChatMessage
+from models.call_log import CallLog
 from middleware.auth_middleware import get_current_user
 from services.agora_service import agora_service
 from config.settings import settings
@@ -34,6 +35,8 @@ async def initiate_call(
     is_authorized = (booking.user_id == current_user.id or booking.advisor.user_id == current_user.id)
     if not is_authorized:
         raise HTTPException(status_code=403, detail=f"Not authorized. User ID: {current_user.id}")
+
+    # Removed consultation_type check to allow calling from any chat room
 
     # Automatically clear any active calls for this booking to allow instant retries
     active_call = db.query(CallLog).filter(

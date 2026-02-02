@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
+import '../../config/api_config.dart';
 import '../../services/auth_service.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
@@ -8,6 +9,9 @@ import 'user_bookings_screen.dart';
 import 'user_profile_screen.dart';
 import '../auth/login_screen.dart';
 import '../auth/register_screen.dart';
+import 'birth_chart_screen.dart';
+import 'horoscope_screen.dart';
+import 'advisor_detail_screen.dart';
 
 class UserHomeScreen extends StatefulWidget {
   const UserHomeScreen({super.key});
@@ -203,6 +207,8 @@ class _HomeTab extends StatefulWidget {
 }
 
 class _HomeTabState extends State<_HomeTab> {
+  Map<String, String> _calendarInfo = {'nepali_date': 'Loading...', 'tithi': '', 'panchang': '', 'english_date': ''};
+  List<dynamic> _horoscopes = [];
   List<AdvisorModel> _featuredAdvisors = [];
   bool _isLoading = true;
 
@@ -210,6 +216,18 @@ class _HomeTabState extends State<_HomeTab> {
   void initState() {
     super.initState();
     _loadFeatured();
+    _loadCalendar();
+    _loadHoroscopes();
+  }
+
+  Future<void> _loadHoroscopes() async {
+    final horoscopes = await ApiService.getDailyHoroscopes();
+    if (mounted) setState(() => _horoscopes = horoscopes);
+  }
+
+  Future<void> _loadCalendar() async {
+    final calendar = await ApiService.getDailyCalendar();
+    if (mounted) setState(() => _calendarInfo = calendar);
   }
 
   Future<void> _loadFeatured() async {
@@ -231,15 +249,14 @@ class _HomeTabState extends State<_HomeTab> {
     return SingleChildScrollView(
       child: Stack(
         children: [
-          // Purple Top Background (Dynamic Height constraint)
           Positioned(
             top: 0,
             left: 0,
             right: 0,
-            height: 300, // Reduced height to prevent bleeding behind lower content
+            height: 300,
             child: Container(
               decoration: const BoxDecoration(
-                color: Color(0xFF381b85), // Deep purple corresponding to the image
+                color: Color(0xFF381b85),
               ),
             ),
           ),
@@ -251,31 +268,33 @@ class _HomeTabState extends State<_HomeTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Greeting row
                   Row(
                     children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: AppTheme.gold,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: AppTheme.goldDark, width: 2),
-                          image: widget.user?.profileImage != null
-                              ? DecorationImage(
-                                  image: NetworkImage(widget.user!.profileImage!),
-                                  fit: BoxFit.cover,
+                      GestureDetector(
+                        onTap: () => widget.onTabChange(3),
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: AppTheme.gold,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppTheme.goldDark, width: 2),
+                            image: widget.user?.profileImage != null
+                                ? DecorationImage(
+                                    image: NetworkImage(ApiConfig.getImageUrl(widget.user!.profileImage)),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
+                          ),
+                          child: widget.user?.profileImage == null
+                              ? Center(
+                                  child: Text(
+                                    widget.user?.fullName.isNotEmpty == true ? widget.user!.fullName[0].toUpperCase() : '?',
+                                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.primaryDark),
+                                  ),
                                 )
                               : null,
                         ),
-                        child: widget.user?.profileImage == null
-                            ? Center(
-                                child: Text(
-                                  widget.user?.fullName.isNotEmpty == true ? widget.user!.fullName[0].toUpperCase() : '?',
-                                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.primaryDark),
-                                ),
-                              )
-                            : null,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -308,7 +327,6 @@ class _HomeTabState extends State<_HomeTab> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Daily Insight Card
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
@@ -316,24 +334,57 @@ class _HomeTabState extends State<_HomeTab> {
                       color: Colors.white.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          'Your Daily Insight',
-                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                    child: Stack(
+                      children: [
+                        Positioned(
+                          right: -20,
+                          top: -20,
+                          child: Icon(Icons.stars, size: 100, color: Colors.white.withOpacity(0.05)),
                         ),
-                        SizedBox(height: 10),
-                        Text(
-                          'Today brings opportunities for growth and self-discovery. The stars align in your favor for meaningful connections.',
-                          style: TextStyle(color: Colors.white, fontSize: 13, height: 1.5),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.gold.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Icon(Icons.calendar_month, color: AppTheme.gold, size: 20),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  _calendarInfo['nepali_date']!,
+                                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            Text(
+                              _calendarInfo['tithi']!,
+                              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _calendarInfo['panchang']!,
+                              style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _calendarInfo['english_date']!,
+                              style: const TextStyle(color: AppTheme.gold, fontSize: 13, fontWeight: FontWeight.bold),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
+                  _buildHoroscopeSection(),
+                  const SizedBox(height: 32),
 
-                  // Overlapping Middle Action Buttons
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -359,7 +410,6 @@ class _HomeTabState extends State<_HomeTab> {
                   ),
                   const SizedBox(height: 32),
 
-                  // Featured Section Header
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -378,7 +428,6 @@ class _HomeTabState extends State<_HomeTab> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Featured List
                   _isLoading
                       ? const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()))
                       : _featuredAdvisors.isEmpty
@@ -395,7 +444,12 @@ class _HomeTabState extends State<_HomeTab> {
                                   child: _WidgetRefCustomAdvisorCard(
                                     advisor: advisor,
                                     onTap: () {
-                                      // Navigation handled later
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => AdvisorDetailScreen(advisor: advisor),
+                                        ),
+                                      );
                                     },
                                   ),
                                 );
@@ -404,7 +458,6 @@ class _HomeTabState extends State<_HomeTab> {
                   
                   const SizedBox(height: 12),
 
-                  // Get Birth Chart Banner Card
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(24),
@@ -427,15 +480,23 @@ class _HomeTabState extends State<_HomeTab> {
                               style: TextStyle(color: Colors.white70, fontSize: 13),
                             ),
                             const SizedBox(height: 16),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: AppTheme.goldDark,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Text(
-                                'Generate Now',
-                                style: TextStyle(color: AppTheme.primaryDark, fontWeight: FontWeight.bold, fontSize: 13),
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const BirthChartScreen()),
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.goldDark,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Text(
+                                  'Generate Now',
+                                  style: TextStyle(color: AppTheme.primaryDark, fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
                               ),
                             ),
                           ],
@@ -454,6 +515,109 @@ class _HomeTabState extends State<_HomeTab> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildHoroscopeSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Daily Horoscopes',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.darkText),
+            ),
+            TextButton(
+              onPressed: () {
+                if (_horoscopes.isNotEmpty) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => HoroscopeScreen(horoscopes: _horoscopes),
+                    ),
+                  );
+                }
+              },
+              child: const Text('View Slider', style: TextStyle(color: AppTheme.primaryPurple, fontSize: 13)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 100,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: _horoscopes.length,
+            itemBuilder: (context, index) {
+              final h = _horoscopes[index];
+              return _buildHoroscopeItem(h);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHoroscopeItem(Map<String, dynamic> horoscope) {
+    return GestureDetector(
+      onTap: () => _showHoroscopeDetail(horoscope),
+      child: Container(
+        width: 85,
+        margin: const EdgeInsets.only(right: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryPurple.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                _getZodiacEmoji(horoscope['sign']),
+                style: const TextStyle(fontSize: 24),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              horoscope['sign'],
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.darkText),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getZodiacEmoji(String sign) {
+    final Map<String, String> emojis = {
+      'मेष': '♈', 'वृष': '♉', 'मिथुन': '♊', 'कर्कट': '♋',
+      'सिंह': '♌', 'कन्या': '♍', 'तुला': '♎', 'वृश्चिक': '♏',
+      'धनु': '♐', 'मकर': '♑', 'कुम्भ': '♒', 'मीन': '♓',
+    };
+    return emojis[sign] ?? '✨';
+  }
+
+  void _showHoroscopeDetail(Map<String, dynamic> h) {
+    int index = _horoscopes.indexOf(h);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => HoroscopeScreen(horoscopes: _horoscopes, initialIndex: index),
       ),
     );
   }
