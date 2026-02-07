@@ -9,6 +9,10 @@ from models.user import User, ChatRoom, ChatMessage, Booking
 from schemas.user_schema import ChatRoomResponse, ChatMessageResponse
 from middleware.auth_middleware import get_current_user
 from services.auth_service import decode_access_token
+from fastapi import File, UploadFile
+import os
+import uuid
+import shutil
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -70,9 +74,7 @@ async def get_or_create_room(
     if not (is_user or is_advisor):
         raise HTTPException(status_code=403, detail="Not authorized to access this chat")
 
-    # Check consultation type
-    if booking.consultation_type.value != "chat":
-        raise HTTPException(status_code=403, detail="This booking is not for a chat consultation.")
+    # All consultation types can access chat for call signaling
 
     room = db.query(ChatRoom).options(
         joinedload(ChatRoom.messages)
@@ -93,6 +95,67 @@ async def get_or_create_room(
         db.refresh(room)
         
     return room
+
+
+@router.get("/room/pre-booking/{advisor_user_id}", response_model=ChatRoomResponse)
+async def get_or_create_pre_booking_room(
+    advisor_user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get or create a pre-booking inquiry chat room."""
+    # Ensure they are not chatting with themselves
+    if current_user.id == advisor_user_id:
+        raise HTTPException(status_code=400, detail="Cannot chat with yourself.")
+        
+    # Check if a null booking_id room exists between the two
+    room = db.query(ChatRoom).options(
+        joinedload(ChatRoom.messages)
+    ).filter(
+        ChatRoom.booking_id == None,
+        ( (ChatRoom.user_id == current_user.id) & (ChatRoom.advisor_id == advisor_user_id) ) |
+        ( (ChatRoom.user_id == advisor_user_id) & (ChatRoom.advisor_id == current_user.id) )
+    ).first()
+    
+    if room:
+        room.messages.sort(key=lambda x: x.timestamp)
+        return room
+        
+    # Create new inquiry room
+    room = ChatRoom(
+        booking_id=None,
+        user_id=current_user.id,
+        advisor_id=advisor_user_id
+    )
+    db.add(room)
+    db.commit()
+    db.refresh(room)
+    return room
+@router.post("/upload", response_model=Dict[str, str])
+async def upload_chat_image(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Upload an image for chat. Returns the filename/path."""
+    # Validate file type
+    ext = file.filename.split(".")[-1].lower() if file.filename else ""
+    if ext not in ["jpg", "jpeg", "png", "webp"]:
+         raise HTTPException(status_code=400, detail="Only images (jpg, png, webp) are allowed.")
+
+    # Save file
+    filename = f"chat_{uuid.uuid4().hex}.{ext}"
+    upload_dir = "static/chat_images"
+    os.makedirs(upload_dir, exist_ok=True)
+    filepath = os.path.join(upload_dir, filename)
+
+    try:
+        with open(filepath, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Could not save file: {e}")
+
+    return {"url": f"/static/chat_images/{filename}"}
 
 
 @router.websocket("/ws/{room_id}")
@@ -122,6 +185,7 @@ async def websocket_endpoint(
 
     await manager.connect(websocket, room_id)
     print(f"--- WebSocket --- User {user.id} (Role: {user.role}) connected to Room {room_id}")
+    
     try:
         while True:
             # Receive data as JSON (standardized with the frontend)
@@ -130,7 +194,7 @@ async def websocket_endpoint(
             except WebSocketDisconnect:
                 break
             except Exception as e:
-                print(f"WS Incoming Error: {e}")
+                print(f"WS Incoming Error in loop: {e}")
                 break
             
             msg_type = msg_data.get("type", "chat")
@@ -140,6 +204,7 @@ async def websocket_endpoint(
                 new_msg = ChatMessage(
                     room_id=room_id,
                     sender_id=user.id,
+                    message_type=msg_data.get("message_type", "text"),
                     content=msg_data.get("content", "")
                 )
                 db.add(new_msg)
@@ -152,6 +217,7 @@ async def websocket_endpoint(
                     "id": new_msg.id,
                     "room_id": new_msg.room_id,
                     "sender_id": new_msg.sender_id,
+                    "message_type": new_msg.message_type.value if hasattr(new_msg.message_type, "value") else new_msg.message_type,
                     "content": new_msg.content,
                     "timestamp": new_msg.timestamp.isoformat(),
                     "is_read": new_msg.is_read
@@ -164,6 +230,8 @@ async def websocket_endpoint(
                 print(f"--- Signaling --- Broadcasting {msg_type} from {user.id} to Room {room_id}")
                 await manager.broadcast(msg_data, room_id)
 
-            
-    except WebSocketDisconnect:
+    except Exception as e:
+        print(f"--- WebSocket --- Unexpected Error in Room {room_id}: {e}")
+    finally:
         manager.disconnect(websocket, room_id)
+        print(f"--- WebSocket --- User {user.id} disconnected from Room {room_id}")

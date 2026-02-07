@@ -3,6 +3,8 @@ import '../../config/theme.dart';
 import '../../widgets/widgets.dart';
 import '../../services/auth_service.dart';
 import 'otp_verification_screen.dart';
+import '../../widgets/nepal_location_picker.dart';
+import '../../models/nepal_location.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -20,6 +22,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   bool _isLoading = false;
   String _selectedRole = 'user';
+  
+  // Location capture
+  String? _pob;
+  String? _location;
+  double? _lat;
+  double? _lon;
 
   @override
   void dispose() {
@@ -41,6 +49,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       password: _passwordController.text,
       phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
       role: _selectedRole,
+      pob: _selectedRole == 'user' ? _pob : null,
+      location: _selectedRole == 'advisor' ? _location : null,
+      lat: _lat,
+      lon: _lon,
     );
 
     setState(() => _isLoading = false);
@@ -180,8 +192,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
           CustomTextField(
             controller: _phoneController,
             hintText: 'Phone Number',
-            prefixIcon: Icons.call_rounded,
+            prefixIcon: Icons.phone_android_rounded,
             keyboardType: TextInputType.phone,
+          ),
+          const SizedBox(height: 14),
+          NepalLocationPicker(
+            label: _selectedRole == 'user' ? 'Place of Birth' : 'Primary Location',
+            hint: _selectedRole == 'user' ? 'Search birthplace in Nepal' : 'Search city or district',
+            onLocationSelected: (loc) {
+              setState(() {
+                if (_selectedRole == 'user') {
+                  _pob = loc.district;
+                } else {
+                  _location = loc.district;
+                }
+                _lat = loc.lat;
+                _lon = loc.lng;
+              });
+            },
           ),
           const SizedBox(height: 22),
           PrimaryButton(

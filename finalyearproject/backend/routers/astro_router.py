@@ -16,14 +16,14 @@ async def generate_birth_chart(
 ):
     """Generate birth chart image and basic details."""
     
-    chart_url = await AstroService.get_chart_image(dob, tob, lat, lon, tz, div, style)
+    chart_svg = await AstroService.get_chart_image(dob, tob, lat, lon, tz, div, style)
     planet_details = await AstroService.get_birth_details(dob, tob, lat, lon, tz)
     
-    if not chart_url and not planet_details:
+    if not chart_svg and not planet_details:
         raise HTTPException(status_code=500, detail="Unable to generate chart. Check birth details.")
         
     return {
         "success": True,
-        "chart_url": chart_url,
+        "chart_svg": chart_svg,
         "details": planet_details # This will contain planet positions, ascendant etc.
     }

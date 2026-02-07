@@ -54,6 +54,9 @@ class CallService {
   }) async {
     await initAgora();
 
+    // Explicitly enable audio for all calls
+    await _engine.enableAudio();
+
     if (isVideo) {
       await _engine.enableVideo();
       await _engine.startPreview();
@@ -63,13 +66,24 @@ class CallService {
 
     await _engine.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
     
+    // Explicitly set media options for consistent behavior across devices
+    final options = ChannelMediaOptions(
+      clientRoleType: ClientRoleType.clientRoleBroadcaster,
+      channelProfile: ChannelProfileType.channelProfileCommunication,
+      publishCameraTrack: isVideo,
+      publishMicrophoneTrack: true,
+      autoSubscribeAudio: true,
+      autoSubscribeVideo: true,
+    );
+
     await _engine.joinChannel(
       token: token,
       channelId: channelName,
-      uid: 0, // 0 allows Agora to assign a dynamic ID
-      options: const ChannelMediaOptions(),
+      uid: 0, 
+      options: options,
     );
   }
+
 
   Future<void> leaveCall() async {
     if (!_isInitialized) return;

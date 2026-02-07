@@ -5,6 +5,9 @@ import '../../services/api_service.dart';
 import '../../models/models.dart';
 import 'advisor_bookings_screen.dart';
 import 'advisor_profile_screen.dart';
+import '../user/birth_chart_screen.dart';
+import 'payout_history_screen.dart';
+import '../common/notification_screen.dart';
 
 class AdvisorHomeScreen extends StatefulWidget {
   const AdvisorHomeScreen({super.key});
@@ -75,11 +78,13 @@ class _AdvisorHomeTab extends StatefulWidget {
 class _AdvisorHomeTabState extends State<_AdvisorHomeTab> {
   Map<String, dynamic>? _stats;
   bool _isLoading = true;
+  int _unreadNotifications = 0;
 
   @override
   void initState() {
     super.initState();
     _loadStats();
+    _loadUnreadCount();
   }
 
   Future<void> _loadStats() async {
@@ -89,6 +94,13 @@ class _AdvisorHomeTabState extends State<_AdvisorHomeTab> {
         _stats = stats;
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadUnreadCount() async {
+    final count = await ApiService.getUnreadNotificationCount();
+    if (mounted) {
+      setState(() => _unreadNotifications = count);
     }
   }
 
@@ -158,7 +170,38 @@ class _AdvisorHomeTabState extends State<_AdvisorHomeTab> {
                           ],
                         ),
                       ),
-                      const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 28),
+                      Stack(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 28),
+                            onPressed: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const NotificationScreen()),
+                              );
+                              _loadUnreadCount();
+                            },
+                          ),
+                          if (_unreadNotifications > 0)
+                            Positioned(
+                              right: 8,
+                              top: 8,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                                child: Text(
+                                  _unreadNotifications > 9 ? '9+' : '$_unreadNotifications',
+                                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -201,7 +244,58 @@ class _AdvisorHomeTabState extends State<_AdvisorHomeTab> {
                     children: [
                       Expanded(child: _StatCard(icon: Icons.reviews, title: 'Reviews', value: '${_stats?['total_reviews'] ?? 0}', color: AppTheme.success)),
                       const SizedBox(width: 14),
-                      Expanded(child: _StatCard(icon: Icons.account_balance_wallet, title: 'Revenue', value: '₹${(_stats?['total_revenue'] ?? 0).toStringAsFixed(0)}', color: AppTheme.accentPurple)),
+                      Expanded(child: _StatCard(icon: Icons.account_balance_wallet, title: 'Available', value: '₹${(_stats?['available_balance'] ?? 0).toStringAsFixed(0)}', color: AppTheme.goldDark)),
+                    ],
+                  ),
+                  const SizedBox(height: 30),
+
+                  const Text(
+                    'Quick Actions',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.darkText),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildMiddleActionButton(
+                          context: context,
+                          icon: Icons.auto_graph_rounded,
+                          label: 'Client Kundali',
+                          color: AppTheme.goldDark,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => BirthChartScreen(isAdvisorMode: true)),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 11),
+                      Expanded(
+                        child: _buildMiddleActionButton(
+                          context: context,
+                          icon: Icons.payments_rounded,
+                          label: 'Cashout',
+                          color: AppTheme.success,
+                          onTap: () => _showCashoutDialog(context),
+                        ),
+                      ),
+                      const SizedBox(width: 11),
+                      Expanded(
+                        child: _buildMiddleActionButton(
+                          context: context,
+                          icon: Icons.history_rounded,
+                          label: 'History',
+                          color: AppTheme.info,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const PayoutHistoryScreen()),
+                            );
+                          },
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 30),
@@ -218,7 +312,6 @@ class _AdvisorHomeTabState extends State<_AdvisorHomeTab> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: MediaQuery.of(context).size.width * 0.28,
         height: 100,
         decoration: BoxDecoration(
           color: Colors.white,
@@ -253,7 +346,77 @@ class _AdvisorHomeTabState extends State<_AdvisorHomeTab> {
       ),
     );
   }
+
+  void _showCashoutDialog(BuildContext context) {
+    final amountController = TextEditingController();
+    final detailsController = TextEditingController();
+    final available = (_stats?['available_balance'] ?? 0.0).toDouble();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Request Cashout'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Available Balance: ₹${available.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.success)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: amountController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Amount (Min. 500)',
+                prefixText: '₹ ',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: detailsController,
+              decoration: const InputDecoration(
+                labelText: 'Payment Details (Bank/Khalti)',
+                hintText: 'Account number or ID',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final amount = double.tryParse(amountController.text) ?? 0;
+              if (amount < 500) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Minimum cashout is 500 RS')));
+                return;
+              }
+              if (amount > available) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Insufficient balance')));
+                return;
+              }
+              if (detailsController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please provide payment details')));
+                return;
+              }
+
+              final success = await ApiService.createPayoutRequest(amount, detailsController.text);
+              if (success) {
+                Navigator.pop(ctx);
+                _loadStats();
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Request submitted!'), backgroundColor: AppTheme.success));
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to submit request'), backgroundColor: AppTheme.error));
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success),
+            child: const Text('Submit'),
+          ),
+        ],
+      ),
+    );
+  }
 }
+
 
 class _StatCard extends StatelessWidget {
   const _StatCard({required this.icon, required this.title, required this.value, required this.color});

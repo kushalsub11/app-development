@@ -4,9 +4,12 @@ import '../../config/api_config.dart';
 import '../../services/auth_service.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
+import '../../services/location_service.dart';
+import '../../widgets/widgets.dart';
 import 'browse_advisors_screen.dart';
 import 'user_bookings_screen.dart';
 import 'user_profile_screen.dart';
+import 'physical_booking_browser_screen.dart';
 import '../auth/login_screen.dart';
 import '../auth/register_screen.dart';
 import 'birth_chart_screen.dart';
@@ -44,34 +47,45 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
       UserProfileScreen(user: _user, onLogout: _logout),
     ];
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF6F7F9),
-      body: screens[_currentIndex],
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (i) => setState(() => _currentIndex = i),
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          selectedItemColor: AppTheme.accentPurple,
-          unselectedItemColor: AppTheme.greyText,
-          selectedFontSize: 12,
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.search_rounded), label: 'Explore'),
-            BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Bookings'),
-            BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
-          ],
+    return WillPopScope(
+      onWillPop: () async {
+        if (_currentIndex != 0) {
+          setState(() {
+            _currentIndex = 0;
+          });
+          return false;
+        }
+        return true;
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF6F7F9),
+        body: screens[_currentIndex],
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, -5),
+              ),
+            ],
+          ),
+          child: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: (i) => setState(() => _currentIndex = i),
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: Colors.white,
+            selectedItemColor: AppTheme.accentPurple,
+            unselectedItemColor: AppTheme.greyText,
+            selectedFontSize: 12,
+            items: const [
+              BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
+              BottomNavigationBarItem(icon: Icon(Icons.search_rounded), label: 'Explore'),
+              BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Bookings'),
+              BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
+            ],
+          ),
         ),
       ),
     );
@@ -401,10 +415,17 @@ class _HomeTabState extends State<_HomeTab> {
                         onTap: () => widget.onTabChange(2),
                       ),
                       _buildMiddleActionButton(
-                        icon: Icons.chat_bubble,
-                        label: 'Chat',
+                        icon: Icons.meeting_room,
+                        label: 'Physical Booking',
                         color: const Color(0xFF904CEE),
-                        onTap: () => widget.onTabChange(2),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const PhysicalBookingBrowserScreen(),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -701,7 +722,7 @@ class _WidgetRefCustomAdvisorCard extends StatelessWidget {
                     height: 65,
                     color: Colors.grey[200],
                     child: advisor.user?.profileImage != null
-                        ? Image.network(advisor.user!.profileImage!, fit: BoxFit.cover)
+                        ? Image.network(ApiConfig.getImageUrl(advisor.user!.profileImage!), fit: BoxFit.cover)
                         : Icon(Icons.person, size: 30, color: Colors.grey[400]),
                   ),
                 ),

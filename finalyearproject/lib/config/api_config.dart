@@ -1,12 +1,15 @@
 class ApiConfig {
   // Change this to your computer's IP address when running on a physical device
   // Use 10.0.2.2 for Android emulator (maps to localhost)
-  static const String baseUrl = 'http://192.168.1.13:60156';
+  // For your physical device, we are using the detected local network IP
+  static const String baseUrl = 'http://192.168.18.226:8000';
 
   static String getImageUrl(String? path) {
     if (path == null || path.isEmpty) return '';
     if (path.startsWith('http')) return path;
-    return '$baseUrl$path';
+    // Ensure the path starts with a slash
+    final cleanPath = path.startsWith('/') ? path : '/$path';
+    return '$baseUrl$cleanPath';
   }
 
   // Auth endpoints
@@ -18,7 +21,8 @@ class ApiConfig {
 
   // User endpoints
   static const String userMe = '$baseUrl/users/me';
-  static const String uploadProfileImage = '$baseUrl/users/upload-profile-image';
+  static const String uploadProfileImage =
+      '$baseUrl/users/upload-profile-image';
   static const String allUsers = '$baseUrl/users';
 
   // Advisor endpoints
@@ -50,10 +54,11 @@ class ApiConfig {
   static const String adminDashboard = '$baseUrl/admin/dashboard';
 
   // Chat endpoints
-  static const String wsBaseUrl = 'ws://192.168.1.13:60156';
+  static const String wsBaseUrl = 'ws://192.168.18.226:8000';
   static const String chatRoom = '$baseUrl/chat/room/booking';
   static const String chatWs = '$wsBaseUrl/chat/ws';
-  
+  static const String chatUpload = '$baseUrl/chat/upload';
+
   // Call endpoints
   static const String initiateCall = '$baseUrl/call/initiate';
   static const String endCall = '$baseUrl/call/end';
@@ -64,5 +69,15 @@ class ApiConfig {
 
   // Astro endpoints
   static const String birthChart = '$baseUrl/astro/birth-chart';
-}
 
+  // Payout endpoints
+  static const String payoutRequests = '$baseUrl/payouts';
+  static const String payoutRequestsMe = '$baseUrl/payouts/me';
+  static const String adminPayoutRequests = '$baseUrl/payouts/admin/all';
+  static String adminPayoutStatus(int id) => '$baseUrl/payouts/admin/$id/status';
+
+  // Notification endpoints
+  static const String notifications = '$baseUrl/notifications/me';
+  static String markNotificationRead(int id) => '$baseUrl/notifications/$id/read';
+  static const String notificationUnreadCount = '$baseUrl/notifications/unread-count';
+}

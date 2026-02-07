@@ -16,6 +16,8 @@ from routers import (
     call_router,
     horoscope_router,
     astro_router,
+    payout_router,
+    notification_router,
 )
 
 
@@ -53,6 +55,10 @@ app.include_router(chat_router.router)
 app.include_router(call_router.router)
 app.include_router(astro_router.router)
 app.include_router(horoscope_router.router)
+app.include_router(payout_router.router)
+app.include_router(notification_router.router)
+
+
 
 
 

@@ -45,6 +45,63 @@ class _UserBookingsScreenState extends State<UserBookingsScreen> {
     }
   }
 
+  void _openChatWithTimeLock(BookingModel booking) {
+    final scheduledDT = booking.scheduledDateTime;
+    final now = DateTime.now();
+
+    if (scheduledDT != null && now.isBefore(scheduledDT)) {
+      // Not time yet — show informational dialog
+      final diff = scheduledDT.difference(now);
+      final hours = diff.inHours;
+      final minutes = diff.inMinutes % 60;
+      String timeLeft = '';
+      if (hours > 0) timeLeft += '${hours}h ';
+      timeLeft += '${minutes}m';
+
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Icon(Icons.access_time, color: AppTheme.accentPurple),
+              const SizedBox(width: 8),
+              const Text('Chat Not Open Yet'),
+            ],
+          ),
+          content: Text(
+            'Your session with the astrologer starts at '
+            '${scheduledDT.hour.toString().padLeft(2, '0')}:${scheduledDT.minute.toString().padLeft(2, '0')} '
+            'on ${scheduledDT.year}-${scheduledDT.month.toString().padLeft(2, '0')}-${scheduledDT.day.toString().padLeft(2, '0')}.\n\n'
+            'Opens in: $timeLeft',
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentPurple),
+              child: const Text('Got it'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    // Time has come — open the chat screen
+    if (_currentUser == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatScreen(
+          booking: booking,
+          otherUserName: booking.advisorName ?? 'Astrologer',
+          currentUserId: _currentUser!.id,
+        ),
+      ),
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -81,6 +138,7 @@ class _UserBookingsScreenState extends State<UserBookingsScreen> {
                               status: b.status,
                               consultationType: b.consultationType,
                               amount: b.amount,
+                              meetingLocation: b.meetingLocation,
                               actions: b.status == 'pending'
                                   ? [
                                       TextButton(
@@ -90,36 +148,14 @@ class _UserBookingsScreenState extends State<UserBookingsScreen> {
                                     ]
                                   : b.status == 'confirmed'
                                       ? [
-                                          if (b.consultationType == 'chat')
-                                            ElevatedButton(
-                                              onPressed: () {
-                                                if (_currentUser == null) return;
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (_) => ChatScreen(
-                                                      booking: b,
-                                                      otherUserName: 'Astrologer',
-                                                      currentUserId: _currentUser!.id,
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentPurple),
-                                              child: const Text('Join Chat'),
-                                            ),
-                                          if (b.consultationType != 'chat')
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                              decoration: BoxDecoration(color: AppTheme.info.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                                              child: Row(
-                                                children: [
-                                                  Icon(b.consultationType == 'video' ? Icons.videocam : Icons.phone, size: 16, color: AppTheme.info),
-                                                  const SizedBox(width: 8),
-                                                  Text(b.consultationType.toUpperCase(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.info)),
-                                                ],
-                                              ),
-                                            ),
+                                          ElevatedButton(
+                                            onPressed: () {
+                                              if (_currentUser == null) return;
+                                              _openChatWithTimeLock(b);
+                                            },
+                                            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentPurple),
+                                            child: Text(b.consultationType == 'chat' ? 'Join Chat' : 'Join Session'),
+                                          ),
                                         ]
                                       : b.status == 'completed'
                                           ? [

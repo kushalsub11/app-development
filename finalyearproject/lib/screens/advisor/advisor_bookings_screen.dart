@@ -48,6 +48,61 @@ class _AdvisorBookingsScreenState extends State<AdvisorBookingsScreen> {
     }
   }
 
+  void _openChatWithTimeLock(BookingModel booking) {
+    final scheduledDT = booking.scheduledDateTime;
+    final now = DateTime.now();
+
+    if (scheduledDT != null && now.isBefore(scheduledDT)) {
+      final diff = scheduledDT.difference(now);
+      final hours = diff.inHours;
+      final minutes = diff.inMinutes % 60;
+      String timeLeft = '';
+      if (hours > 0) timeLeft += '${hours}h ';
+      timeLeft += '${minutes}m';
+
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.access_time, color: AppTheme.accentPurple),
+              SizedBox(width: 8),
+              Text('Session Not Open Yet'),
+            ],
+          ),
+          content: Text(
+            'Your session starts at '
+            '${scheduledDT.hour.toString().padLeft(2, '0')}:${scheduledDT.minute.toString().padLeft(2, '0')} '
+            'on ${scheduledDT.year}-${scheduledDT.month.toString().padLeft(2, '0')}-${scheduledDT.day.toString().padLeft(2, '0')}.\n\n'
+            'Opens in: $timeLeft',
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentPurple),
+              child: const Text('Got it'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    if (_currentUser == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatScreen(
+          booking: booking,
+          otherUserName: booking.userName ?? 'Client #${booking.userId}',
+          currentUserId: _currentUser!.id,
+        ),
+      ),
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -84,6 +139,7 @@ class _AdvisorBookingsScreenState extends State<AdvisorBookingsScreen> {
                               status: b.status,
                               consultationType: b.consultationType,
                               amount: b.amount,
+                              meetingLocation: b.meetingLocation,
                               actions: b.status == 'pending'
                                   ? [
                                       TextButton(
@@ -102,42 +158,17 @@ class _AdvisorBookingsScreenState extends State<AdvisorBookingsScreen> {
                                     ]
                                   : b.status == 'confirmed'
                                       ? [
-                                          if (b.consultationType == 'chat')
-                                            ElevatedButton(
-                                              onPressed: () {
-                                                if (_currentUser == null) return;
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (_) => ChatScreen(
-                                                      booking: b,
-                                                      otherUserName: 'Client #${b.userId}',
-                                                      currentUserId: _currentUser!.id,
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentPurple),
-                                              child: const Icon(Icons.chat, color: Colors.white, size: 20),
-                                            ),
-                                          if (b.consultationType != 'chat')
-                                             Container(
-                                              padding: const EdgeInsets.all(8),
-                                              decoration: BoxDecoration(color: AppTheme.info.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                                              child: Row(
-                                                children: [
-                                                  Icon(b.consultationType == 'video' ? Icons.videocam : Icons.phone, size: 16, color: AppTheme.info),
-                                                  const SizedBox(width: 4),
-                                                  Text(b.consultationType.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.info)),
-                                                ],
-                                              ),
-                                            ),
+                                          ElevatedButton(
+                                            onPressed: () => _openChatWithTimeLock(b),
+                                            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentPurple),
+                                            child: Text(b.consultationType == 'chat' ? 'Join Chat' : 'Join Session'),
+                                          ),
                                           const SizedBox(width: 8),
                                           ElevatedButton(
                                             onPressed: () => _updateStatus(b.id, 'completed'),
                                             style: ElevatedButton.styleFrom(
                                               backgroundColor: AppTheme.info,
-                                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                                              padding: const EdgeInsets.symmetric(horizontal: 12),
                                             ),
                                             child: const Text('Complete'),
                                           ),

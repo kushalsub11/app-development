@@ -26,6 +26,12 @@ class ConsultationType(str, enum.Enum):
     chat = "chat"
     voice = "voice"
     video = "video"
+    physical = "physical"
+
+
+class MessageType(str, enum.Enum):
+    text = "text"
+    image = "image"
 
 
 class PaymentStatus(str, enum.Enum):
@@ -42,11 +48,24 @@ class ReportStatus(str, enum.Enum):
     dismissed = "dismissed"
 
 
+class VerificationStatus(str, enum.Enum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+
+
 class CallStatus(str, enum.Enum):
     initiated = "initiated"
     ongoing = "ongoing"
     completed = "completed"
     missed = "missed"
+
+
+class PayoutStatus(str, enum.Enum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+    completed = "completed"
 
 
 # ---------- Models ----------
@@ -59,6 +78,14 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     phone = Column(String(20), nullable=True)
     profile_image = Column(String(255), nullable=True)
+    location = Column(String(255), nullable=True)
+    dob = Column(String(20), nullable=True)
+    tob = Column(String(10), nullable=True)
+    pob = Column(String(255), nullable=True)
+    lat = Column(Float, nullable=True)
+    lon = Column(Float, nullable=True)
+    birth_chart_svg = Column(Text, nullable=True)
+    planet_details = Column(JSON, nullable=True)
     role = Column(Enum(UserRole), default=UserRole.user, nullable=False)
     is_active = Column(Boolean, default=True)
     is_email_verified = Column(Boolean, default=False)
@@ -73,6 +100,20 @@ class User(Base):
     payments = relationship("Payment", back_populates="user")
     reviews = relationship("Review", back_populates="user", foreign_keys="Review.user_id")
     reports_filed = relationship("Report", back_populates="reporter", foreign_keys="Report.reporter_id")
+    favorites = relationship("FavoriteAdvisor", back_populates="user", cascade="all, delete-orphan")
+
+
+class FavoriteAdvisor(Base):
+    __tablename__ = "favorite_advisors"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    advisor_id = Column(Integer, ForeignKey("advisor_profiles.id"), nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+    # Relationships
+    user = relationship("User", back_populates="favorites")
+    advisor = relationship("AdvisorProfile", back_populates="favorited_by")
 
 
 class AdvisorProfile(Base):
@@ -89,13 +130,29 @@ class AdvisorProfile(Base):
     is_verified = Column(Boolean, default=False)
     verification_doc = Column(String(255), nullable=True)
     available_slots = Column(JSON, nullable=True)
+    # Extended profile fields
+    location = Column(String(255), nullable=True)
+    birthday = Column(String(20), nullable=True)
+    contact_number = Column(String(20), nullable=True)
+    certificate_pdf = Column(String(255), nullable=True)
+    is_blocked = Column(Boolean, default=False)
+    verification_status = Column(Enum(VerificationStatus), default=VerificationStatus.pending, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
+    
+    # Physical consultation fields
+    is_physical_available = Column(Boolean, default=False)
+    is_virtual_available = Column(Boolean, default=True)
+    is_online = Column(Boolean, default=True)
+    office_address = Column(String(500), nullable=True)
+    religion = Column(String(50), nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="advisor_profile")
     bookings = relationship("Booking", back_populates="advisor", foreign_keys="Booking.advisor_id")
     reviews = relationship("Review", back_populates="advisor", foreign_keys="Review.advisor_id")
     reports = relationship("Report", back_populates="reported_advisor", foreign_keys="Report.reported_advisor_id")
+    payout_requests = relationship("PayoutRequest", back_populates="advisor")
+    favorited_by = relationship("FavoriteAdvisor", back_populates="advisor", cascade="all, delete-orphan")
 
 
 class Booking(Base):
@@ -110,6 +167,7 @@ class Booking(Base):
     status = Column(Enum(BookingStatus), default=BookingStatus.pending)
     consultation_type = Column(Enum(ConsultationType), default=ConsultationType.chat)
     amount = Column(Float, default=0.0)
+    meeting_location = Column(String(500), nullable=True) # Address for physical meeting
     created_at = Column(DateTime, server_default=func.now())
 
     # Relationships
@@ -177,7 +235,7 @@ class ChatRoom(Base):
     __tablename__ = "chat_rooms"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=False, unique=True)
+    booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=True, unique=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     advisor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     is_active = Column(Boolean, default=True)
@@ -194,10 +252,42 @@ class ChatMessage(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     room_id = Column(Integer, ForeignKey("chat_rooms.id"), nullable=False)
     sender_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    content = Column(Text, nullable=False)
+    message_type = Column(Enum(MessageType), default=MessageType.text)
+    content = Column(Text, nullable=False) # Stores text or image URL
     timestamp = Column(DateTime, server_default=func.now())
     is_read = Column(Boolean, default=False)
 
     # Relationships
     room = relationship("ChatRoom", back_populates="messages")
     sender = relationship("User", foreign_keys=[sender_id])
+
+
+class PayoutRequest(Base):
+    __tablename__ = "payout_requests"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    advisor_id = Column(Integer, ForeignKey("advisor_profiles.id"), nullable=False)
+    amount = Column(Float, nullable=False)
+    payment_details = Column(Text, nullable=False)
+    status = Column(Enum(PayoutStatus), default=PayoutStatus.pending)
+    admin_notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    advisor = relationship("AdvisorProfile", back_populates="payout_requests")
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    title = Column(String(200), nullable=False)
+    message = Column(Text, nullable=False)
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+    # Relationships
+    user = relationship("User", backref="notifications")
+

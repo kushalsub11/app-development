@@ -21,8 +21,19 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     phone VARCHAR(20),
     profile_image VARCHAR(255),
+    location VARCHAR(255),
+    dob VARCHAR(20),
+    tob VARCHAR(10),
+    pob VARCHAR(255),
+    lat FLOAT,
+    lon FLOAT,
+    birth_chart_svg TEXT,
+    planet_details JSONB,
     role user_role DEFAULT 'user',
     is_active BOOLEAN DEFAULT TRUE,
+    is_email_verified BOOLEAN DEFAULT FALSE,
+    otp_code VARCHAR(6),
+    otp_expiry TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -30,11 +41,13 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE INDEX idx_users_email ON users(email);
 
 -- Insert default admin (Password: admin123 hashed with bcrypt)
-INSERT INTO users (full_name, email, password_hash, role, is_active) 
-VALUES ('Admin', 'admin@sajeloguru.com', '$2b$12$LXFhJ8G0h1gJ3T3Z1qJ3ZOqdGkPv2S8TN8J3p3j5d5GfZ3v3j3b3.', 'admin', TRUE)
+INSERT INTO users (full_name, email, password_hash, role, is_active, is_email_verified) 
+VALUES ('Admin', 'admin@sajeloguru.com', '$2b$12$LXFhJ8G0h1gJ3T3Z1qJ3ZOqdGkPv2S8TN8J3p3j5d5GfZ3v3j3b3.', 'admin', TRUE, TRUE)
 ON CONFLICT (email) DO UPDATE SET full_name = EXCLUDED.full_name;
 
 -- Advisor Profiles Table
+CREATE TYPE verification_status AS ENUM ('pending', 'approved', 'rejected');
+
 CREATE TABLE IF NOT EXISTS advisor_profiles (
     id SERIAL PRIMARY KEY,
     user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -47,6 +60,12 @@ CREATE TABLE IF NOT EXISTS advisor_profiles (
     is_verified BOOLEAN DEFAULT FALSE,
     verification_doc VARCHAR(255),
     available_slots JSONB,
+    location VARCHAR(255),
+    birthday VARCHAR(20),
+    contact_number VARCHAR(20),
+    certificate_pdf VARCHAR(255),
+    is_blocked BOOLEAN DEFAULT FALSE,
+    verification_status verification_status DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

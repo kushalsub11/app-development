@@ -12,6 +12,8 @@ class CustomTextField extends StatelessWidget {
     this.suffixIcon,
     this.keyboardType,
     this.validator,
+    this.focusNode,
+    this.onChanged,
   });
 
   final String hintText;
@@ -21,6 +23,8 @@ class CustomTextField extends StatelessWidget {
   final Widget? suffixIcon;
   final TextInputType? keyboardType;
   final String? Function(String?)? validator;
+  final FocusNode? focusNode;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +33,8 @@ class CustomTextField extends StatelessWidget {
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,
+      focusNode: focusNode,
+      onChanged: onChanged,
       decoration: InputDecoration(
         hintText: hintText,
         prefixIcon: Icon(prefixIcon, color: AppTheme.greyText),
@@ -197,6 +203,7 @@ class BookingCard extends StatelessWidget {
     required this.status,
     required this.consultationType,
     required this.amount,
+    this.meetingLocation,
     this.onTap,
     this.actions,
   });
@@ -207,6 +214,7 @@ class BookingCard extends StatelessWidget {
   final String status;
   final String consultationType;
   final double amount;
+  final String? meetingLocation;
   final VoidCallback? onTap;
   final List<Widget>? actions;
 
@@ -229,6 +237,8 @@ class BookingCard extends StatelessWidget {
         return Icons.phone;
       case 'video':
         return Icons.videocam;
+      case 'physical':
+        return Icons.location_on;
       default:
         return Icons.chat;
     }

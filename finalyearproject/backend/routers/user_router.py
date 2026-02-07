@@ -8,6 +8,7 @@ from config.database import get_db
 from models.user import User
 from schemas.user_schema import UserResponse, UserUpdate
 from middleware.auth_middleware import get_current_user, require_role
+from services.astro_service import AstroService
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -31,6 +32,53 @@ async def update_profile(
         current_user.phone = user_data.phone
     if user_data.profile_image is not None:
         current_user.profile_image = user_data.profile_image
+    
+    # New profile fields
+    if user_data.location is not None:
+        current_user.location = user_data.location
+    if user_data.dob is not None:
+        current_user.dob = user_data.dob
+    if user_data.tob is not None:
+        current_user.tob = user_data.tob
+    if user_data.pob is not None:
+        current_user.pob = user_data.pob
+    if user_data.lat is not None:
+        current_user.lat = user_data.lat
+    if user_data.lon is not None:
+        current_user.lon = user_data.lon
+    if user_data.birth_chart_svg is not None:
+        current_user.birth_chart_svg = user_data.birth_chart_svg
+    if user_data.planet_details is not None:
+        current_user.planet_details = user_data.planet_details
+
+    # Auto-generate and cache birth chart if all required fields are present
+    if current_user.dob and current_user.tob and current_user.lat and current_user.lon:
+        try:
+            # We assume NPT (+5.75) for now as default, or we can calculate based on location
+            tz = 5.75
+            chart_svg = await AstroService.get_chart_image(
+                dob=current_user.dob, 
+                tob=current_user.tob, 
+                lat=current_user.lat, 
+                lon=current_user.lon, 
+                tz=tz
+            )
+            planet_details = await AstroService.get_birth_details(
+                dob=current_user.dob, 
+                tob=current_user.tob, 
+                lat=current_user.lat, 
+                lon=current_user.lon, 
+                tz=tz
+            )
+            
+            if chart_svg:
+                current_user.birth_chart_svg = chart_svg
+            if planet_details:
+                current_user.planet_details = planet_details
+                
+        except Exception as e:
+            # Log error but don't fail the profile update
+            print(f"Failed to auto-generate cached birth chart: {str(e)}")
 
     db.commit()
     db.refresh(current_user)
@@ -96,3 +144,51 @@ async def toggle_user_active(
     db.commit()
     db.refresh(user)
     return UserResponse.model_validate(user)
+
+
+# ---------- Favorites ----------
+
+@router.post("/me/favorites/{advisor_id}")
+async def toggle_favorite(
+    advisor_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Toggle an advisor in the user's favorites list."""
+    from models.user import FavoriteAdvisor, AdvisorProfile
+    
+    # Check if advisor exists
+    advisor = db.query(AdvisorProfile).filter(AdvisorProfile.id == advisor_id).first()
+    if not advisor:
+        raise HTTPException(status_code=404, detail="Advisor not found")
+
+    # Check if favorite already exists
+    existing_fav = db.query(FavoriteAdvisor).filter(
+        FavoriteAdvisor.user_id == current_user.id,
+        FavoriteAdvisor.advisor_id == advisor_id
+    ).first()
+
+    if existing_fav:
+        # Remove favorite
+        db.delete(existing_fav)
+        db.commit()
+        return {"status": "removed", "advisor_id": advisor_id}
+    else:
+        # Add favorite
+        new_fav = FavoriteAdvisor(user_id=current_user.id, advisor_id=advisor_id)
+        db.add(new_fav)
+        db.commit()
+        return {"status": "added", "advisor_id": advisor_id}
+
+
+@router.get("/me/favorites")
+async def get_favorites(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get a list of all advisor_ids that the current user has favorited."""
+    from models.user import FavoriteAdvisor
+    
+    favs = db.query(FavoriteAdvisor).filter(FavoriteAdvisor.user_id == current_user.id).all()
+    return {"favorite_advisor_ids": [f.advisor_id for f in favs]}
+

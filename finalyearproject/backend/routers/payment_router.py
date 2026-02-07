@@ -37,9 +37,13 @@ async def initiate_khalti_payment(
         "Content-Type": "application/json",
     }
     
+    # Use the server's network IP for the return URL so physical devices can reach it
+    base_url = f"http://192.168.18.28:{getattr(settings, 'SERVER_PORT', 8000)}"
+    
     payload = {
-        "return_url": f"http://127.0.0.1:{getattr(settings, 'SERVER_PORT', 8000)}/payments/khalti/callback?booking_id={booking.id}", 
+        "return_url": f"{base_url}/payments/khalti/callback?booking_id={booking.id}", 
         "website_url": "https://sajeloguru.com",
+
         "amount": amount_paisa,
         "purchase_order_id": str(booking.id),
         "purchase_order_name": f"Consultation Booking #{booking.id}",
@@ -119,28 +123,59 @@ async def khalti_callback(
                     db.commit()
 
                 return """
+                <!DOCTYPE html>
                 <html>
-                    <head><title>Payment Successful</title></head>
-                    <body style="font-family: sans-serif; text-align: center; padding-top: 100px;">
-                        <h1 style="color: #28a745;">Payment Successful!</h1>
-                        <p>Your booking has been confirmed. You can now close this window and return to the app.</p>
-                        <button onclick="window.close()" style="padding: 10px 20px; background: #5d3fd3; color: white; border: none; border-radius: 5px; cursor: pointer;">Close Window</button>
-                    </body>
+                <head>
+                    <title>Payment Successful | Sajelo Guru</title>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <style>
+                        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f6f7f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+                        .card { background: white; padding: 40px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; max-width: 400px; width: 90%; }
+                        .icon { width: 80px; height: 80px; background: #28a745; color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 40px; margin: 0 auto 24px; }
+                        h1 { color: #1a0949; margin: 0 0 12px; font-size: 24px; }
+                        p { color: #666; font-size: 16px; line-height: 1.5; margin: 0 0 32px; }
+                        .btn { background: linear-gradient(135deg, #1a0949 0%, #381b85 100%); color: white; padding: 14px 28px; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; box-shadow: 0 4px 15px rgba(56, 27, 133, 0.3); }
+                    </style>
+                </head>
+                <body>
+                    <div class="card">
+                        <div class="icon">✓</div>
+                        <h1>Payment Success!</h1>
+                        <p>Your consultation booking has been confirmed. You can now return to the app to start your session.</p>
+                        <a href="javascript:window.close()" class="btn">Return to App</a>
+                    </div>
+                </body>
                 </html>
                 """
         except Exception as e:
             print(f"Callback verification error: {e}")
 
     return """
+    <!DOCTYPE html>
     <html>
-        <head><title>Payment Failed</title></head>
-        <body style="font-family: sans-serif; text-align: center; padding-top: 100px;">
-            <h1 style="color: #dc3545;">Payment Verification Failed</h1>
-            <p>Something went wrong. Please check your transaction status in the app.</p>
-            <button onclick="window.close()" style="padding: 10px 20px; background: #5d3fd3; color: white; border: none; border-radius: 5px; cursor: pointer;">Go Back</button>
-        </body>
+    <head>
+        <title>Payment Failed | Sajelo Guru</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f6f7f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+            .card { background: white; padding: 40px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; max-width: 400px; width: 90%; }
+            .icon { width: 80px; height: 80px; background: #dc3545; color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 40px; margin: 0 auto 24px; }
+            h1 { color: #1a0949; margin: 0 0 12px; font-size: 24px; }
+            p { color: #666; font-size: 16px; line-height: 1.5; margin: 0 0 32px; }
+            .btn { background: #5d3fd3; color: white; padding: 14px 28px; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <div class="icon">✕</div>
+            <h1>Verification Failed</h1>
+            <p>We couldn't verify your payment. Please check your transaction history in the app or contact support.</p>
+            <a href="javascript:window.close()" class="btn">Go Back</a>
+        </div>
+    </body>
     </html>
     """
+
 
 
 @router.get("/khalti/verify")

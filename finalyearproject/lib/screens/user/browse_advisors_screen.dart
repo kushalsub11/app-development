@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
+import '../../config/api_config.dart';
 import '../../services/api_service.dart';
 import '../../models/models.dart';
 import '../../widgets/widgets.dart';
 import 'advisor_detail_screen.dart';
+import '../../widgets/nepal_location_picker.dart';
+import '../../models/nepal_location.dart';
 
 class BrowseAdvisorsScreen extends StatefulWidget {
   const BrowseAdvisorsScreen({super.key});
@@ -16,13 +19,31 @@ class _BrowseAdvisorsScreenState extends State<BrowseAdvisorsScreen> {
   List<AdvisorModel> _advisors = [];
   bool _isLoading = true;
   String _selectedCategory = 'All';
+  String _selectedReligion = 'All';
+  String? _selectedLocation;
+  bool _showOnlyFavorites = false;
 
   final List<String> _categories = [
     'All',
-    'Vedic Astrology',
-    'Tarot Reading',
-    'Numerology',
-    'Palmistry',
+    'Puja',
+    'Harauna',
+    'Kundali',
+    'Jyotish',
+    'Vastu',
+    'Marriage',
+    'Career',
+    'Health',
+    'Education',
+  ];
+
+  final List<String> _religions = [
+    'All',
+    'Hindu',
+    'Buddhist',
+    'Kirat',
+    'Christian',
+    'Muslim',
+    'Others',
   ];
 
   @override
@@ -32,7 +53,28 @@ class _BrowseAdvisorsScreenState extends State<BrowseAdvisorsScreen> {
   }
 
   Future<void> _loadAdvisors() async {
-    final advisors = await ApiService.getAdvisors();
+    setState(() => _isLoading = true);
+    
+    // Fetch in parallel for speed
+    final responses = await Future.wait([
+      ApiService.getAdvisors(
+        specialization: _selectedCategory == 'All' ? null : _selectedCategory,
+        religion: _selectedReligion == 'All' ? null : _selectedReligion,
+        location: _selectedLocation,
+      ),
+      ApiService.getFavorites(),
+    ]);
+
+    final advisors = responses[0] as List<AdvisorModel>;
+    final favoriteIds = responses[1] as List<int>;
+
+    // Sync favorites
+    for (var advisor in advisors) {
+      if (favoriteIds.contains(advisor.id)) {
+        advisor.isFavorite = true;
+      }
+    }
+
     setState(() {
       _advisors = advisors;
       _isLoading = false;
@@ -42,23 +84,62 @@ class _BrowseAdvisorsScreenState extends State<BrowseAdvisorsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF381b85), // Deep purple from the image
+      backgroundColor: const Color(0xFF381b85), // Deep purple
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 16.0, top: 8, bottom: 8),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
-              onPressed: () => Navigator.pop(context),
+        automaticallyImplyLeading: false,
+        actions: [
+          Builder(
+            builder: (context) => Padding(
+              padding: const EdgeInsets.only(right: 8.0, top: 8, bottom: 8),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.tune, color: Colors.white, size: 20),
+                  onPressed: () => Scaffold.of(context).openEndDrawer(),
+                ),
+              ),
             ),
           ),
-        ),
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0, top: 8, bottom: 8),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _showOnlyFavorites 
+                    ? AppTheme.goldDark.withOpacity(0.3) 
+                    : Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: _showOnlyFavorites 
+                    ? Border.all(color: AppTheme.goldDark, width: 1.5)
+                    : null,
+              ),
+              child: IconButton(
+                icon: Icon(
+                  _showOnlyFavorites ? Icons.favorite : Icons.favorite_border, 
+                  color: _showOnlyFavorites ? AppTheme.goldDark : Colors.white, 
+                  size: 20
+                ),
+                onPressed: () {
+                  setState(() => _showOnlyFavorites = !_showOnlyFavorites);
+                  if (_showOnlyFavorites) {
+                    final favCount = _advisors.where((a) => a.isFavorite).length;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Showing $favCount favorite advisors'),
+                        duration: const Duration(seconds: 1),
+                        behavior: SnackBarBehavior.floating,
+                      )
+                    );
+                  }
+                },
+              ),
+            ),
+          ),
+        ],
         title: const Text(
           'Browse Astrologers',
           style: TextStyle(
@@ -68,35 +149,17 @@ class _BrowseAdvisorsScreenState extends State<BrowseAdvisorsScreen> {
           ),
         ),
         centerTitle: true,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0, top: 8, bottom: 8),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.favorite, color: Colors.white, size: 20),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Favorites coming soon!')));
-                },
-              ),
-            ),
-          ),
-        ],
       ),
+      endDrawer: _buildFilterDrawer(),
       body: ResponsiveContainer(
         maxWidth: 600,
         padding: EdgeInsets.zero,
         child: Column(
           children: [
-            // Top Search and Categories Section
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
               child: Column(
                 children: [
-                  // Search Bar
                   Container(
                     height: 50,
                     decoration: BoxDecoration(
@@ -112,11 +175,12 @@ class _BrowseAdvisorsScreenState extends State<BrowseAdvisorsScreen> {
                         border: InputBorder.none,
                         filled: false,
                       ),
+                      onSubmitted: (val) {
+                        // Logic for search can be added here or dynamically
+                      },
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
-                  // Categories List
                   SizedBox(
                     height: 36,
                     child: ListView.separated(
@@ -127,7 +191,10 @@ class _BrowseAdvisorsScreenState extends State<BrowseAdvisorsScreen> {
                         final category = _categories[index];
                         final isSelected = _selectedCategory == category;
                         return GestureDetector(
-                          onTap: () => setState(() => _selectedCategory = category),
+                          onTap: () {
+                            setState(() => _selectedCategory = category);
+                            _loadAdvisors();
+                          },
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             alignment: Alignment.center,
@@ -160,12 +227,10 @@ class _BrowseAdvisorsScreenState extends State<BrowseAdvisorsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-  
-            // Main White Container for List
             Expanded(
               child: Container(
                 decoration: const BoxDecoration(
-                  color: Color(0xFFF6F7F9), // Light background matching image
+                  color: Color(0xFFF6F7F9),
                   borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(30),
                     topRight: Radius.circular(30),
@@ -178,7 +243,6 @@ class _BrowseAdvisorsScreenState extends State<BrowseAdvisorsScreen> {
                   ),
                   child: Column(
                     children: [
-                      // Result count and Sort Row
                       Padding(
                         padding: const EdgeInsets.fromLTRB(24, 20, 24, 10),
                         child: Row(
@@ -190,56 +254,55 @@ class _BrowseAdvisorsScreenState extends State<BrowseAdvisorsScreen> {
                                 style: const TextStyle(color: AppTheme.greyText, fontSize: 13),
                                 children: [
                                   TextSpan(
-                                    text: _isLoading ? '...' : '${_advisors.length}',
+                                    text: _isLoading ? '...' : '${_advisors.where((a) => !_showOnlyFavorites || a.isFavorite).length}',
                                     style: const TextStyle(fontWeight: FontWeight.w800, color: AppTheme.darkText),
                                   ),
-                                  const TextSpan(text: ' advisors'),
+                                  TextSpan(text: _showOnlyFavorites ? ' favorite advisors' : ' advisors'),
                                 ],
                               ),
                             ),
-                            Row(
-                              children: [
-                                Icon(Icons.sort, size: 16, color: AppTheme.lightPurple),
-                                const SizedBox(width: 4),
-                                const Text(
-                                  'Sort by',
-                                  style: TextStyle(
-                                    color: AppTheme.lightPurple,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 13,
-                                  ),
-                                )
-                              ],
-                            )
+                            if (_selectedLocation != null || _selectedReligion != 'All' || _showOnlyFavorites)
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _selectedReligion = 'All';
+                                    _selectedLocation = null;
+                                    _showOnlyFavorites = false;
+                                  });
+                                  _loadAdvisors();
+                                },
+                                child: const Text('Clear Filters', style: TextStyle(color: AppTheme.accentPurple, fontSize: 12, fontWeight: FontWeight.bold)),
+                              ),
                           ],
                         ),
                       ),
-  
-                      // Advisor List
                       Expanded(
                         child: _isLoading
                             ? const Center(child: CircularProgressIndicator())
-                            : ListView.builder(
-                                padding: const EdgeInsets.only(left: 20, right: 20, bottom: 30, top: 4),
-                                itemCount: _advisors.length,
-                                itemBuilder: (context, index) {
-                                  final advisor = _advisors[index];
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 16),
-                                    child: _CustomAdvisorCard(
-                                      advisor: advisor,
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => AdvisorDetailScreen(advisor: advisor),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  );
-                                },
-                              ),
+                            : _advisors.isEmpty
+                                ? const Center(child: Text('No advisors found for the selected filters.'))
+                                : ListView.builder(
+                                    padding: const EdgeInsets.only(left: 20, right: 20, bottom: 30, top: 4),
+                                    itemCount: _advisors.where((a) => !_showOnlyFavorites || a.isFavorite).length,
+                                    itemBuilder: (context, index) {
+                                      final filteredList = _advisors.where((a) => !_showOnlyFavorites || a.isFavorite).toList();
+                                      final advisor = filteredList[index];
+                                      return Padding(
+                                        padding: const EdgeInsets.only(bottom: 16),
+                                        child: _CustomAdvisorCard(
+                                          advisor: advisor,
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => AdvisorDetailScreen(advisor: advisor),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      );
+                                    },
+                                  ),
                       ),
                     ],
                   ),
@@ -251,9 +314,103 @@ class _BrowseAdvisorsScreenState extends State<BrowseAdvisorsScreen> {
       ),
     );
   }
+
+  Widget _buildFilterDrawer() {
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Advanced Filters', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                  IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                ],
+              ),
+            ),
+            const Divider(),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(20.0),
+                children: [
+                  const Text('Religion', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    children: _religions.map((r) {
+                      final isSelected = _selectedReligion == r;
+                      return ChoiceChip(
+                        label: Text(r),
+                        selected: isSelected,
+                        onSelected: (val) => setState(() => _selectedReligion = r),
+                        selectedColor: AppTheme.accentPurple.withOpacity(0.2),
+                        labelStyle: TextStyle(color: isSelected ? AppTheme.accentPurple : Colors.black),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text('Location (Nepal)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(height: 12),
+                  NepalLocationPicker(
+                    initialValue: _selectedLocation,
+                    label: "Search District",
+                    onLocationSelected: (loc) {
+                      setState(() => _selectedLocation = loc.district);
+                    },
+                  ),
+                  if (_selectedLocation != null) ...[
+                    const SizedBox(height: 8),
+                    Chip(
+                      label: Text(_selectedLocation!),
+                      onDeleted: () => setState(() => _selectedLocation = null),
+                      deleteIcon: const Icon(Icons.close, size: 14),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        setState(() {
+                          _selectedCategory = 'All';
+                          _selectedReligion = 'All';
+                          _selectedLocation = null;
+                        });
+                        _loadAdvisors();
+                        Navigator.pop(context);
+                      },
+                      child: const Text('Reset'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: PrimaryButton(
+                      label: 'Apply Filters',
+                      onPressed: () {
+                        _loadAdvisors();
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class _CustomAdvisorCard extends StatelessWidget {
+class _CustomAdvisorCard extends StatefulWidget {
   final AdvisorModel advisor;
   final VoidCallback onTap;
 
@@ -263,8 +420,13 @@ class _CustomAdvisorCard extends StatelessWidget {
   });
 
   @override
+  State<_CustomAdvisorCard> createState() => _CustomAdvisorCardState();
+}
+
+class _CustomAdvisorCardState extends State<_CustomAdvisorCard> {
+  @override
   Widget build(BuildContext context) {
-    // Determine dynamic properties (Mocking for UI representation using real variables where possible)
+    final advisor = widget.advisor;
     final name = advisor.user?.fullName ?? 'Unknown Advisor';
     final specialization = advisor.specialization ?? 'Astrology Specialist';
     final rating = advisor.rating.toStringAsFixed(1);
@@ -272,15 +434,14 @@ class _CustomAdvisorCard extends StatelessWidget {
     final experience = advisor.experienceYears;
     final rate = advisor.hourlyRate.toInt();
     
-    // UI states usually returned from backend, applying conditional logic
-    final isAvailable = true; // Hardcoded UI mockup logic to match picture, usually would depend on advisor schedule
+    final isAvailable = advisor.isOnline;
     final statusColor = isAvailable ? const Color(0xFFE2F6EB) : const Color(0xFFFFF7E3);
     final statusTextColor = isAvailable ? const Color(0xFF00C853) : const Color(0xFFFDB000);
-    final statusText = isAvailable ? 'Available' : 'Busy';
+    final statusText = isAvailable ? 'Online' : 'Offline';
     final statusIcon = isAvailable ? Icons.check_circle : Icons.timer;
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -296,11 +457,9 @@ class _CustomAdvisorCard extends StatelessWidget {
         ),
         child: Column(
           children: [
-            // Top Row (Image & Detail Header)
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Avatar with Status Badge
                 Stack(
                   children: [
                     ClipRRect(
@@ -310,7 +469,7 @@ class _CustomAdvisorCard extends StatelessWidget {
                         height: 65,
                         color: Colors.grey[200],
                         child: advisor.user?.profileImage != null
-                            ? Image.network(advisor.user!.profileImage!, fit: BoxFit.cover)
+                            ? Image.network(ApiConfig.getImageUrl(advisor.user!.profileImage!), fit: BoxFit.cover)
                             : Icon(Icons.person, size: 30, color: Colors.grey[400]),
                       ),
                     ),
@@ -332,8 +491,6 @@ class _CustomAdvisorCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(width: 14),
-
-                // Name & Details
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -353,7 +510,25 @@ class _CustomAdvisorCard extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const Icon(Icons.favorite_border, color: AppTheme.inputBorder, size: 20),
+                          GestureDetector(
+                            onTap: () async {
+                              final prev = advisor.isFavorite;
+                              setState(() {
+                                advisor.isFavorite = !prev; // Optimistic UI
+                              });
+                              final success = await ApiService.toggleFavorite(advisor.id);
+                              if (!success) {
+                                setState(() {
+                                  advisor.isFavorite = prev; // Revert on failure
+                                });
+                              }
+                            },
+                            child: Icon(
+                              advisor.isFavorite ? Icons.favorite : Icons.favorite_border,
+                              color: advisor.isFavorite ? Colors.red : AppTheme.inputBorder,
+                              size: 24,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 4),
@@ -363,9 +538,13 @@ class _CustomAdvisorCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      const SizedBox(height: 4),
+                      if (advisor.religion != null)
+                        Text(
+                          advisor.religion!,
+                          style: TextStyle(fontSize: 11, color: AppTheme.accentPurple, fontWeight: FontWeight.bold),
+                        ),
                       const SizedBox(height: 8),
-                      
-                      // Stats Row
                       Row(
                         children: [
                           const Icon(Icons.star, color: AppTheme.goldDark, size: 14),
@@ -393,13 +572,10 @@ class _CustomAdvisorCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            
-            // Bottom Row (Price & Button)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Availability left
                 Row(
                   children: [
                     Container(
@@ -422,7 +598,7 @@ class _CustomAdvisorCard extends StatelessWidget {
                       TextSpan(
                         children: [
                           TextSpan(
-                            text: '₹$rate',
+                            text: 'Rs. $rate',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
@@ -441,7 +617,6 @@ class _CustomAdvisorCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                // Book Now button right
                 Container(
                   height: 32,
                   padding: const EdgeInsets.symmetric(horizontal: 16),

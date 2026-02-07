@@ -18,7 +18,7 @@ if not admin:
     admin = User(
         email=admin_email,
         full_name="Super Admin",
-        hashed_password=pwd_context.hash("admin123"),
+        password_hash=pwd_context.hash("admin123"),
         role="admin",
         is_email_verified=True,
         is_active=True
@@ -27,7 +27,7 @@ if not admin:
     db.commit()
     print("Admin Created successfully!")
 else:
-    admin.hashed_password = pwd_context.hash("admin123")
+    admin.password_hash = pwd_context.hash("admin123")
     admin.is_email_verified = True
     db.commit()
     print("Admin Reset successfully!")

@@ -77,6 +77,9 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                               ],
                             ),
                             const SizedBox(height: 8),
+                            Text(r.reportedAdvisorName ?? 'Advisor #${r.reportedAdvisorId}', 
+                                style: const TextStyle(fontSize: 13, color: AppTheme.greyText, fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 4),
                             Text(r.reason, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                             if (r.description != null) ...[
                               const SizedBox(height: 4),

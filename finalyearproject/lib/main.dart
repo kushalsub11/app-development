@@ -12,11 +12,14 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
+  static final navigatorKey = GlobalKey<NavigatorState>();
+  
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'Sajelo Guru',
       theme: AppTheme.theme,

@@ -7,6 +7,14 @@ class UserModel {
   final String role;
   final bool isActive;
   final String? createdAt;
+  // Birth details
+  final String? dob;
+  final String? tob;
+  final String? pob;
+  final double? lat;
+  final double? lon;
+  final String? birthChartSvg;
+  final dynamic planetDetails;
 
   UserModel({
     required this.id,
@@ -17,6 +25,13 @@ class UserModel {
     required this.role,
     required this.isActive,
     this.createdAt,
+    this.dob,
+    this.tob,
+    this.pob,
+    this.lat,
+    this.lon,
+    this.birthChartSvg,
+    this.planetDetails,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -29,6 +44,13 @@ class UserModel {
       role: json['role'],
       isActive: json['is_active'],
       createdAt: json['created_at'],
+      dob: json['dob'],
+      tob: json['tob'],
+      pob: json['pob'],
+      lat: json['lat'] != null ? (json['lat'] as num).toDouble() : null,
+      lon: json['lon'] != null ? (json['lon'] as num).toDouble() : null,
+      birthChartSvg: json['birth_chart_svg'],
+      planetDetails: json['planet_details'],
     );
   }
 
@@ -41,6 +63,11 @@ class UserModel {
       'profile_image': profileImage,
       'role': role,
       'is_active': isActive,
+      'dob': dob,
+      'tob': tob,
+      'pob': pob,
+      'lat': lat,
+      'lon': lon,
     };
   }
 }
@@ -57,6 +84,20 @@ class AdvisorModel {
   final int totalReviews;
   final bool isVerified;
   final UserModel? user;
+  // Extended profile fields
+  final String? location;
+  final String? birthday;
+  final String? contactNumber;
+  final String? certificatePdf;
+  final bool isBlocked;
+  final String verificationStatus;
+  final String? officeAddress;
+  final bool isPhysicalAvailable;
+  final bool isVirtualAvailable;
+  final bool isOnline;
+  final String? religion;
+  final dynamic availableSlots;
+  bool isFavorite;
 
   AdvisorModel({
     required this.id,
@@ -69,6 +110,19 @@ class AdvisorModel {
     required this.totalReviews,
     required this.isVerified,
     this.user,
+    this.location,
+    this.birthday,
+    this.contactNumber,
+    this.certificatePdf,
+    this.isBlocked = false,
+    this.verificationStatus = 'pending',
+    this.officeAddress,
+    this.isPhysicalAvailable = false,
+    this.isVirtualAvailable = true,
+    this.isOnline = true,
+    this.religion,
+    this.availableSlots,
+    this.isFavorite = false,
   });
 
   factory AdvisorModel.fromJson(Map<String, dynamic> json) {
@@ -83,6 +137,19 @@ class AdvisorModel {
       totalReviews: json['total_reviews'] ?? 0,
       isVerified: json['is_verified'] ?? false,
       user: json['user'] != null ? UserModel.fromJson(json['user']) : null,
+      location: json['location'],
+      birthday: json['birthday'],
+      contactNumber: json['contact_number'],
+      certificatePdf: json['certificate_pdf'],
+      isBlocked: json['is_blocked'] ?? false,
+      verificationStatus: json['verification_status'] ?? 'pending',
+      religion: json['religion'],
+      isPhysicalAvailable: json['is_physical_available'] ?? false,
+      isVirtualAvailable: json['is_virtual_available'] ?? true,
+      isOnline: json['is_online'] ?? true,
+      officeAddress: json['office_address'],
+      availableSlots: json['available_slots'],
+      isFavorite: json['isFavorite'] ?? false,
     );
   }
 }
@@ -98,7 +165,12 @@ class BookingModel {
   final String status;
   final String consultationType;
   final double amount;
+  final String? meetingLocation;
   final String? createdAt;
+  final String? advisorName;
+  final String? advisorImage;
+  final String? userName;
+  final String? userImage;
 
   BookingModel({
     required this.id,
@@ -110,7 +182,12 @@ class BookingModel {
     required this.status,
     required this.consultationType,
     required this.amount,
+    this.meetingLocation,
     this.createdAt,
+    this.advisorName,
+    this.advisorImage,
+    this.userName,
+    this.userImage,
   });
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
@@ -124,10 +201,47 @@ class BookingModel {
       status: json['status'] ?? 'pending',
       consultationType: json['consultation_type'] ?? 'chat',
       amount: (json['amount'] ?? 0).toDouble(),
+      meetingLocation: json['meeting_location'],
       createdAt: json['created_at'],
+      advisorName: json['advisor_name'],
+      advisorImage: json['advisor_image'],
+      userName: json['user_name'],
+      userImage: json['user_image'],
     );
   }
+
+  /// Returns the scheduled DateTime combining bookingDate + startTime.
+  /// Used to enforce the chat/call time lock.
+  DateTime? get scheduledDateTime {
+    try {
+      final datePart = bookingDate.split('T').first.trim();
+      final timeParts = startTime.split(':');
+      if (timeParts.length < 2) return null;
+      final hour = int.parse(timeParts[0]);
+      final minute = int.parse(timeParts[1]);
+      final dateParsed = DateTime.parse(datePart);
+      return DateTime(dateParsed.year, dateParsed.month, dateParsed.day, hour, minute);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  DateTime? get endDateTime {
+    try {
+      final datePart = bookingDate.split('T').first.trim();
+      final timeParts = endTime.split(':');
+      if (timeParts.length < 2) return null;
+      final hour = int.parse(timeParts[0]);
+      final minute = int.parse(timeParts[1]);
+      final dateParsed = DateTime.parse(datePart);
+      return DateTime(dateParsed.year, dateParsed.month, dateParsed.day, hour, minute);
+    } catch (_) {
+      return null;
+    }
+  }
 }
+
+
 
 
 class ReviewModel {
@@ -175,6 +289,8 @@ class ReportModel {
   final String status;
   final String? adminNotes;
   final String? createdAt;
+  final String? reporterName;
+  final String? reportedAdvisorName;
 
   ReportModel({
     required this.id,
@@ -185,6 +301,8 @@ class ReportModel {
     required this.status,
     this.adminNotes,
     this.createdAt,
+    this.reporterName,
+    this.reportedAdvisorName,
   });
 
   factory ReportModel.fromJson(Map<String, dynamic> json) {
@@ -197,6 +315,8 @@ class ReportModel {
       status: json['status'],
       adminNotes: json['admin_notes'],
       createdAt: json['created_at'],
+      reporterName: json['reporter_name'],
+      reportedAdvisorName: json['reported_advisor_name'],
     );
   }
 }
@@ -241,6 +361,7 @@ class ChatMessageModel {
   final int id;
   final int roomId;
   final int senderId;
+  final String messageType;
   final String content;
   final String timestamp;
   final bool isRead;
@@ -249,6 +370,7 @@ class ChatMessageModel {
     required this.id,
     required this.roomId,
     required this.senderId,
+    this.messageType = 'text',
     required this.content,
     required this.timestamp,
     required this.isRead,
@@ -259,6 +381,7 @@ class ChatMessageModel {
       id: json['id'],
       roomId: json['room_id'],
       senderId: json['sender_id'],
+      messageType: json['message_type'] ?? 'text',
       content: json['content'],
       timestamp: json['timestamp'],
       isRead: json['is_read'] ?? false,
@@ -299,3 +422,72 @@ class ChatRoomModel {
     );
   }
 }
+
+class PayoutRequestModel {
+  final int id;
+  final int advisorId;
+  final double amount;
+  final String paymentDetails;
+  final String status;
+  final String? adminNotes;
+  final String createdAt;
+  final String updatedAt;
+  final AdvisorModel? advisor;
+
+  PayoutRequestModel({
+    required this.id,
+    required this.advisorId,
+    required this.amount,
+    required this.paymentDetails,
+    required this.status,
+    this.adminNotes,
+    required this.createdAt,
+    required this.updatedAt,
+    this.advisor,
+  });
+
+  factory PayoutRequestModel.fromJson(Map<String, dynamic> json) {
+    return PayoutRequestModel(
+      id: json['id'],
+      advisorId: json['advisor_id'],
+      amount: (json['amount'] ?? 0).toDouble(),
+      paymentDetails: json['payment_details'] ?? '',
+      status: json['status'] ?? 'pending',
+      adminNotes: json['admin_notes'],
+      createdAt: json['created_at'],
+      updatedAt: json['updated_at'],
+      advisor: json['advisor'] != null ? AdvisorModel.fromJson(json['advisor']) : null,
+    );
+  }
+}
+
+class NotificationModel {
+  final int id;
+  final int userId;
+  final String title;
+  final String message;
+  final bool isRead;
+  final String createdAt;
+
+  NotificationModel({
+    required this.id,
+    required this.userId,
+    required this.title,
+    required this.message,
+    required this.isRead,
+    required this.createdAt,
+  });
+
+  factory NotificationModel.fromJson(Map<String, dynamic> json) {
+    return NotificationModel(
+      id: json['id'],
+      userId: json['user_id'],
+      title: json['title'] ?? '',
+      message: json['message'] ?? '',
+      isRead: json['is_read'] ?? false,
+      createdAt: json['created_at'],
+    );
+  }
+}
+
+

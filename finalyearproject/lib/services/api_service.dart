@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
+import '../main.dart';
 import '../models/models.dart';
 import 'auth_service.dart';
 
@@ -12,6 +14,8 @@ class ApiService {
       final response = await http.get(Uri.parse(ApiConfig.userMe), headers: headers);
       if (response.statusCode == 200) {
         return UserModel.fromJson(jsonDecode(response.body));
+      } else if (response.statusCode == 401) {
+        _handleUnauthorized();
       }
     } catch (e) {
       print('Error getting current user: $e');
@@ -38,6 +42,27 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> changePassword(String oldPassword, String newPassword) async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/auth/change-password'),
+        headers: headers,
+        body: jsonEncode({
+          'old_password': oldPassword,
+          'new_password': newPassword,
+        }),
+      );
+      final body = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': body['message']};
+      }
+      return {'success': false, 'message': body['detail'] ?? 'Update failed'};
+    } catch (e) {
+      return {'success': false, 'message': 'Connection error'};
+    }
+  }
+
   static Future<UserModel?> uploadProfileImage(String filePath) async {
     try {
       final token = await AuthService.getToken();
@@ -60,9 +85,24 @@ class ApiService {
   }
 
   // ---------- Advisor APIs ----------
-  static Future<List<AdvisorModel>> getAdvisors() async {
+  static Future<List<AdvisorModel>> getAdvisors({
+    String? location,
+    String? specialization,
+    String? religion,
+    bool? isPhysical,
+  }) async {
     try {
-      final response = await http.get(Uri.parse(ApiConfig.advisors));
+      final queryParams = <String, String>{};
+      if (location != null && location.isNotEmpty) queryParams['location'] = location;
+      if (specialization != null && specialization.isNotEmpty && specialization != 'All') {
+        queryParams['specialization'] = specialization;
+      }
+      if (religion != null && religion.isNotEmpty) queryParams['religion'] = religion;
+      if (isPhysical != null) queryParams['is_physical'] = isPhysical.toString();
+
+      final uri = Uri.parse(ApiConfig.advisors).replace(queryParameters: queryParams);
+      final response = await http.get(uri);
+      
       if (response.statusCode == 200) {
         final List list = jsonDecode(response.body);
         return list.map((e) => AdvisorModel.fromJson(e)).toList();
@@ -71,6 +111,38 @@ class ApiService {
       print('Error getting advisors: $e');
     }
     return [];
+  }
+
+  static Future<List<int>> getFavorites() async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/users/me/favorites'),
+        headers: headers,
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List ids = data['favorite_advisor_ids'] ?? [];
+        return ids.cast<int>();
+      }
+    } catch (e) {
+      print('Error getting favorites: $e');
+    }
+    return [];
+  }
+
+  static Future<bool> toggleFavorite(int advisorId) async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/users/me/favorites/$advisorId'),
+        headers: headers,
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error toggling favorite: $e');
+    }
+    return false;
   }
 
   static Future<AdvisorModel?> getAdvisorDetail(int advisorId) async {
@@ -99,12 +171,84 @@ class ApiService {
     }
   }
 
+  static Future<AdvisorModel?> uploadAdvisorCertificate(String filePath) async {
+    try {
+      final token = await AuthService.getToken();
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${ApiConfig.advisors}/me/upload-certificate'),
+      );
+      request.headers['Authorization'] = 'Bearer $token';
+      request.files.add(await http.MultipartFile.fromPath('file', filePath));
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      if (response.statusCode == 200) {
+        return AdvisorModel.fromJson(jsonDecode(response.body));
+      }
+      print('Certificate upload failed: ${response.body}');
+    } catch (e) {
+      print('Error uploading certificate: $e');
+    }
+    return null;
+  }
+
+  static Future<String?> uploadChatImage(String filePath) async {
+    try {
+      final token = await AuthService.getToken();
+      final request = http.MultipartRequest('POST', Uri.parse(ApiConfig.chatUpload));
+      request.headers['Authorization'] = 'Bearer $token';
+      request.files.add(await http.MultipartFile.fromPath('file', filePath));
+      
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['url'];
+      }
+    } catch (e) {
+      print('Error uploading chat image: $e');
+    }
+    return null;
+  }
+
+  static Future<AdvisorModel?> getMyAdvisorProfile() async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.get(
+        Uri.parse('${ApiConfig.advisors}/me/profile'),
+        headers: headers,
+      );
+      if (response.statusCode == 200) {
+        return AdvisorModel.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      print('Error getting advisor profile: $e');
+    }
+    return null;
+  }
+
+  static Future<bool> blockAdvisor(int advisorId) async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/admin/advisors/$advisorId/block'),
+        headers: headers,
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
   static Future<Map<String, dynamic>?> getAdvisorStats() async {
     try {
       final headers = await AuthService.getAuthHeaders();
       final response = await http.get(Uri.parse(ApiConfig.advisorStats), headers: headers);
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        _handleUnauthorized();
       }
     } catch (e) {
       print('Error getting advisor stats: $e');
@@ -124,6 +268,8 @@ class ApiService {
       final body = jsonDecode(response.body);
       if (response.statusCode == 201) {
         return {'success': true, 'booking': BookingModel.fromJson(body)};
+      } else if (response.statusCode == 401) {
+        _handleUnauthorized();
       }
       return {'success': false, 'message': body['detail'] ?? 'Booking failed'};
     } catch (e) {
@@ -138,6 +284,8 @@ class ApiService {
       if (response.statusCode == 200) {
         final List list = jsonDecode(response.body);
         return list.map((e) => BookingModel.fromJson(e)).toList();
+      } else if (response.statusCode == 401) {
+        _handleUnauthorized();
       }
     } catch (e) {
       print('Error getting bookings: $e');
@@ -228,11 +376,21 @@ class ApiService {
         headers: headers,
         body: jsonEncode(data),
       );
+      
       final body = jsonDecode(response.body);
       if (response.statusCode == 201) {
         return {'success': true};
       }
-      return {'success': false, 'message': body['detail'] ?? 'Report failed'};
+      
+      String errorMessage = 'Report failed';
+      if (body['detail'] is String) {
+        errorMessage = body['detail'];
+      } else if (body['detail'] is List) {
+        // Handle Pydantic validation errors
+        errorMessage = (body['detail'] as List).map((e) => e['msg']).join(', ');
+      }
+      
+      return {'success': false, 'message': errorMessage};
     } catch (e) {
       return {'success': false, 'message': 'Connection error: $e'};
     }
@@ -380,6 +538,25 @@ class ApiService {
     return null;
   }
 
+  static Future<Map<String, dynamic>> getOrCreatePreBookingRoom(int advisorId) async {
+    try {
+      final token = await AuthService.getToken();
+      final response = await http.get(
+        // Assuming ApiConfig has been updated with preBookingRoom url or building it directly
+        Uri.parse('${ApiConfig.baseUrl}/chat/room/pre-booking/$advisorId'),
+        headers: {'Authorization': 'Bearer $token'},
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      throw Exception('Failed to load pre-booking room: ${response.body}');
+    } catch (e) {
+      print('Error getting pre-booking room: $e');
+      rethrow;
+    }
+  }
+
   // ---------- Call APIs ----------
   static Future<Map<String, dynamic>?> initiateCall(int bookingId, String type) async {
     try {
@@ -521,4 +698,127 @@ class ApiService {
     };
     return mapping[englishName] ?? englishName;
   }
+
+  // ---------- Payout Requests ----------
+  static Future<bool> createPayoutRequest(double amount, String paymentDetails) async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.post(
+        Uri.parse(ApiConfig.payoutRequests),
+        headers: headers,
+        body: jsonEncode({
+          'amount': amount,
+          'payment_details': paymentDetails,
+        }),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error creating payout request: $e');
+      return false;
+    }
+  }
+
+  static Future<List<PayoutRequestModel>> getMyPayoutRequests() async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.get(Uri.parse(ApiConfig.payoutRequestsMe), headers: headers);
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => PayoutRequestModel.fromJson(json)).toList();
+      }
+    } catch (e) {
+      print('Error getting my payout requests: $e');
+    }
+    return [];
+  }
+
+  static Future<List<PayoutRequestModel>> getAllPayoutRequestsAdmin() async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.get(Uri.parse(ApiConfig.adminPayoutRequests), headers: headers);
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => PayoutRequestModel.fromJson(json)).toList();
+      }
+    } catch (e) {
+      print('Error getting all payout requests: $e');
+    }
+    return [];
+  }
+
+  static Future<bool> updatePayoutStatus(int id, String status, {String? notes}) async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.put(
+        Uri.parse(ApiConfig.adminPayoutStatus(id)),
+        headers: headers,
+        body: jsonEncode({
+          'status': status,
+          'admin_notes': notes,
+        }),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error updating payout status: $e');
+      return false;
+    }
+  }
+
+  // ---------- Notifications ----------
+  static Future<List<NotificationModel>> getMyNotifications() async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.get(Uri.parse(ApiConfig.notifications), headers: headers);
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => NotificationModel.fromJson(json)).toList();
+      }
+    } catch (e) {
+      print('Error getting notifications: $e');
+    }
+    return [];
+  }
+
+  static Future<bool> markNotificationAsRead(int id) async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.put(Uri.parse(ApiConfig.markNotificationRead(id)), headers: headers);
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error marking notification as read: $e');
+      return false;
+    }
+  }
+
+  static Future<int> getUnreadNotificationCount() async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.get(Uri.parse(ApiConfig.notificationUnreadCount), headers: headers);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['count'] ?? 0;
+      } else if (response.statusCode == 401) {
+        _handleUnauthorized();
+      }
+    } catch (e) {
+      print('Error getting unread count: $e');
+    }
+    return 0;
+  }
+
+
+  // ---------- Authorization Recovery ----------
+  static void _handleUnauthorized() {
+    AuthService.logout();
+    
+    // Use the global navigator key to force a redirect to the login screen
+    if (MyApp.navigatorKey.currentState != null) {
+      MyApp.navigatorKey.currentState!.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const AuthScreen()),
+        (route) => false, // Remove all previous routes
+      );
+    }
+  }
 }
+
+

@@ -137,7 +137,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               icon: Icons.lock,
               title: 'Change Password',
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Change Password coming soon!')));
+                _showChangePasswordDialog();
               },
             ),
             _ProfileMenuItem(
@@ -158,7 +158,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               icon: Icons.help,
               title: 'Help & Support',
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Help & Support coming soon!')));
+                _showHelpDialog();
               },
             ),
             const SizedBox(height: 20),
@@ -188,6 +188,128 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showChangePasswordDialog() {
+    final oldController = TextEditingController();
+    final newController = TextEditingController();
+    final confirmController = TextEditingController();
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Change Password'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: oldController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Old Password'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: newController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'New Password'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: confirmController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Confirm New Password'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isSubmitting
+                  ? null
+                  : () async {
+                      if (newController.text != confirmController.text) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Passwords do not match'), backgroundColor: AppTheme.error),
+                        );
+                        return;
+                      }
+                      if (newController.text.length < 6) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Password must be at least 6 characters'), backgroundColor: AppTheme.error),
+                        );
+                        return;
+                      }
+
+                      setDialogState(() => isSubmitting = true);
+                      final result = await ApiService.changePassword(
+                        oldController.text,
+                        newController.text,
+                      );
+
+                      if (mounted) {
+                        setDialogState(() => isSubmitting = false);
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(result['message'] ?? (result['success'] ? 'Password updated' : 'Update failed')),
+                            backgroundColor: result['success'] ? AppTheme.success : AppTheme.error,
+                          ),
+                        );
+                      }
+                    },
+              child: isSubmitting
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Text('Update'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showHelpDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Help & Support'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Need assistance?', style: TextStyle(fontWeight: FontWeight.bold)),
+            SizedBox(height: 8),
+            Text('Our support team is available 24/7 to help you with payment issues, report disputes, or technical difficulties.'),
+            SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(Icons.email_outlined, size: 20, color: AppTheme.accentPurple),
+                SizedBox(width: 8),
+                Text('sajeloguru@gmail.com'),
+              ],
+            ),
+            SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.phone_outlined, size: 20, color: AppTheme.accentPurple),
+                SizedBox(width: 8),
+                Text('+977-9766047777'),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Dismiss'),
+          ),
+        ],
       ),
     );
   }

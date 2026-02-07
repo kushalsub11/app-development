@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
+import '../../config/api_config.dart';
 import '../../services/api_service.dart';
 import '../../models/models.dart';
 import '../../widgets/widgets.dart';
 import 'booking_screen.dart';
+
 
 class AdvisorDetailScreen extends StatefulWidget {
   const AdvisorDetailScreen({super.key, required this.advisor});
@@ -31,6 +33,121 @@ class _AdvisorDetailScreenState extends State<AdvisorDetailScreen> {
     });
   }
 
+  void _showReportDialog(BuildContext context) {
+    String selectedReason = 'Inappropriate Behavior';
+    final descController = TextEditingController();
+    bool isSubmitting = false;
+
+    final reasons = [
+      'Inappropriate Behavior',
+      'Fake Credentials',
+      'No Show / Did Not Attend',
+      'Harassment or Abuse',
+      'Other',
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 24,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Report Advisor',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.darkText),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Help us keep the community safe. Reports are reviewed by admins.',
+                style: TextStyle(color: AppTheme.greyText, fontSize: 13),
+              ),
+              const SizedBox(height: 20),
+              DropdownButtonFormField<String>(
+                value: selectedReason,
+                decoration: const InputDecoration(
+                  labelText: 'Reason',
+                  border: OutlineInputBorder(),
+                ),
+                items: reasons.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                onChanged: (v) => setModalState(() => selectedReason = v ?? selectedReason),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: descController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Additional Details (optional)',
+                  border: OutlineInputBorder(),
+                  hintText: 'Please describe the issue...',
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error),
+                      onPressed: isSubmitting
+                          ? null
+                          : () async {
+                              setModalState(() => isSubmitting = true);
+                              final result = await ApiService.createReport({
+                                'reported_advisor_id': widget.advisor.id,
+                                'reason': selectedReason,
+                                'description': descController.text.isEmpty ? null : descController.text,
+                              });
+                              setModalState(() => isSubmitting = false);
+                              if (!ctx.mounted) return;
+                              Navigator.pop(ctx);
+                              if (result['success'] == true) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Report submitted. Our team will review it.'),
+                                    backgroundColor: AppTheme.success,
+                                  ),
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(result['message'] ?? 'Failed to submit report.'),
+                                    backgroundColor: AppTheme.error,
+                                  ),
+                                );
+                              }
+                            },
+                      child: isSubmitting
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text('Submit Report', style: TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final advisor = widget.advisor;
@@ -56,6 +173,12 @@ class _AdvisorDetailScreenState extends State<AdvisorDetailScreen> {
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
                       ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.flag_outlined, color: Colors.white),
+                      tooltip: 'Report Advisor',
+                      onPressed: () => _showReportDialog(context),
                     ),
                   ],
                 ),
@@ -85,20 +208,17 @@ class _AdvisorDetailScreenState extends State<AdvisorDetailScreen> {
                               width: 80,
                               height: 80,
                               decoration: const BoxDecoration(
-                                gradient: AppTheme.cardGradient,
+                                color: AppTheme.gold,
                                 shape: BoxShape.circle,
                               ),
-                              child: Center(
-                                child: Text(
-                                  advisor.user?.fullName.isNotEmpty == true
-                                      ? advisor.user!.fullName[0].toUpperCase()
-                                      : '?',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                              child: ClipOval(
+                                child: (advisor.user?.profileImage != null && advisor.user!.profileImage!.isNotEmpty)
+                                    ? Image.network(
+                                        ApiConfig.getImageUrl(advisor.user!.profileImage!),
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => _buildInitialPlaceholder(advisor),
+                                      )
+                                    : _buildInitialPlaceholder(advisor),
                               ),
                             ),
                             const SizedBox(height: 14),
@@ -127,6 +247,17 @@ class _AdvisorDetailScreenState extends State<AdvisorDetailScreen> {
                                 fontSize: 16,
                               ),
                             ),
+                            if (advisor.religion != null && advisor.religion!.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                '${advisor.religion} Practitioner',
+                                style: const TextStyle(
+                                  color: AppTheme.accentPurple,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 14),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -158,6 +289,48 @@ class _AdvisorDetailScreenState extends State<AdvisorDetailScreen> {
                                 ),
                               ],
                             ),
+                            if (advisor.isPhysicalAvailable) ...[
+                              const SizedBox(height: 16),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.accentPurple.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: AppTheme.accentPurple.withOpacity(0.1)),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.location_on, color: AppTheme.accentPurple, size: 20),
+                                        const SizedBox(width: 8),
+                                        const Text(
+                                          'Physical Consultation Available',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 14,
+                                            color: AppTheme.darkText,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    if (advisor.officeAddress != null && advisor.officeAddress!.isNotEmpty) ...[
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        advisor.officeAddress!,
+                                        style: TextStyle(
+                                          color: AppTheme.darkText.withOpacity(0.8),
+                                          fontSize: 13,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ],
                             if (advisor.bio != null && advisor.bio!.isNotEmpty) ...[
                               const SizedBox(height: 16),
                               const Divider(),
@@ -262,6 +435,18 @@ class _AdvisorDetailScreenState extends State<AdvisorDetailScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+  Widget _buildInitialPlaceholder(AdvisorModel advisor) {
+    return Center(
+      child: Text(
+        advisor.user?.fullName.isNotEmpty == true ? advisor.user!.fullName[0].toUpperCase() : '?',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 32,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );

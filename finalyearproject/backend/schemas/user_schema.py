@@ -17,6 +17,10 @@ class UserRegister(BaseModel):
     password: str = Field(..., min_length=6)
     phone: Optional[str] = None
     role: UserRole = UserRole.user
+    location: Optional[str] = None
+    pob: Optional[str] = None
+    lat: Optional[float] = None
+    lon: Optional[float] = None
 
 
 class UserLogin(BaseModel):
@@ -36,6 +40,11 @@ class VerifyOTP(BaseModel):
 class ResetPassword(BaseModel):
     email: EmailStr
     otp: str
+    new_password: str = Field(..., min_length=6)
+
+
+class ChangePassword(BaseModel):
+    old_password: str
     new_password: str = Field(..., min_length=6)
 
 
@@ -61,6 +70,14 @@ class UserResponse(BaseModel):
     role: str
     is_active: bool
     created_at: Optional[datetime] = None
+    location: Optional[str] = None
+    dob: Optional[str] = None
+    tob: Optional[str] = None
+    pob: Optional[str] = None
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    birth_chart_svg: Optional[str] = None
+    planet_details: Optional[dict] = None
 
     class Config:
         from_attributes = True
@@ -70,6 +87,14 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     phone: Optional[str] = None
     profile_image: Optional[str] = None
+    location: Optional[str] = None
+    dob: Optional[str] = None
+    tob: Optional[str] = None
+    pob: Optional[str] = None
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    birth_chart_svg: Optional[str] = None
+    planet_details: Optional[dict] = None
 
 
 # ---------- Advisor Schemas ----------
@@ -90,6 +115,18 @@ class AdvisorProfileResponse(BaseModel):
     rating: float
     total_reviews: int
     is_verified: bool
+    verification_doc: Optional[str] = None
+    verification_status: Optional[str] = "pending"
+    location: Optional[str] = None
+    birthday: Optional[str] = None
+    contact_number: Optional[str] = None
+    certificate_pdf: Optional[str] = None
+    is_blocked: Optional[bool] = False
+    is_physical_available: bool = False
+    is_virtual_available: bool = True
+    is_online: bool = True
+    office_address: Optional[str] = None
+    religion: Optional[str] = None
     user: Optional[UserResponse] = None
 
     class Config:
@@ -102,6 +139,15 @@ class AdvisorProfileUpdate(BaseModel):
     experience_years: Optional[int] = None
     hourly_rate: Optional[float] = None
     available_slots: Optional[dict] = None
+    verification_doc: Optional[str] = None
+    location: Optional[str] = None
+    birthday: Optional[str] = None
+    contact_number: Optional[str] = None
+    is_physical_available: Optional[bool] = None
+    is_virtual_available: Optional[bool] = None
+    is_online: Optional[bool] = None
+    office_address: Optional[str] = None
+    religion: Optional[str] = None
 
 
 # ---------- Booking Schemas ----------
@@ -112,6 +158,7 @@ class BookingCreate(BaseModel):
     end_time: str
     consultation_type: str = "chat"
     amount: float = 0.0
+    meeting_location: Optional[str] = None
 
 
 class BookingResponse(BaseModel):
@@ -124,6 +171,7 @@ class BookingResponse(BaseModel):
     status: str
     consultation_type: str
     amount: float
+    meeting_location: Optional[str] = None
     created_at: Optional[datetime] = None
 
     class Config:
@@ -173,6 +221,8 @@ class ReportResponse(BaseModel):
     admin_notes: Optional[str] = None
     created_at: Optional[datetime] = None
     resolved_at: Optional[datetime] = None
+    reporter_name: Optional[str] = None
+    reported_advisor_name: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -210,6 +260,7 @@ class ChatMessageResponse(BaseModel):
     id: int
     room_id: int
     sender_id: int
+    message_type: str = "text"
     content: str
     timestamp: datetime
     is_read: bool
@@ -220,7 +271,7 @@ class ChatMessageResponse(BaseModel):
 
 class ChatRoomResponse(BaseModel):
     id: int
-    booking_id: int
+    booking_id: Optional[int] = None
     user_id: int
     advisor_id: int
     is_active: bool
@@ -229,3 +280,42 @@ class ChatRoomResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ---------- Payout Schemas ----------
+class PayoutRequestCreate(BaseModel):
+    amount: float = Field(..., ge=500)
+    payment_details: str
+
+class PayoutRequestResponse(BaseModel):
+    id: int
+    advisor_id: int
+    amount: float
+    payment_details: str
+    status: str
+    admin_notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    advisor: Optional[AdvisorProfileResponse] = None
+
+    class Config:
+        from_attributes = True
+
+class PayoutStatusUpdate(BaseModel):
+    status: str
+    admin_notes: Optional[str] = None
+
+
+# ---------- Notification Schemas ----------
+class NotificationResponse(BaseModel):
+    id: int
+    user_id: int
+    title: str
+    message: str
+    is_read: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+

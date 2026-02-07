@@ -3,9 +3,10 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from config.database import get_db
 from models.user import User, AdvisorProfile, UserRole
-from schemas.user_schema import UserRegister, UserLogin, Token, UserResponse, EmailRequest, VerifyOTP, ResetPassword
+from schemas.user_schema import UserRegister, UserLogin, Token, UserResponse, EmailRequest, VerifyOTP, ResetPassword, ChangePassword
 from services.auth_service import hash_password, verify_password, create_access_token
 from services.email_service import generate_otp, send_otp_email
+from middleware.auth_middleware import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -23,6 +24,10 @@ async def register(user_data: UserRegister, background_tasks: BackgroundTasks, d
             new_user.password_hash = hash_password(user_data.password)
             new_user.phone = user_data.phone
             new_user.role = UserRole(user_data.role.value)
+            new_user.location = user_data.location
+            new_user.pob = user_data.pob
+            new_user.lat = user_data.lat
+            new_user.lon = user_data.lon
     else:
         new_user = User(
             full_name=user_data.full_name,
@@ -30,6 +35,10 @@ async def register(user_data: UserRegister, background_tasks: BackgroundTasks, d
             password_hash=hash_password(user_data.password),
             phone=user_data.phone,
             role=UserRole(user_data.role.value),
+            location=user_data.location,
+            pob=user_data.pob,
+            lat=user_data.lat,
+            lon=user_data.lon,
             is_email_verified=False
         )
         db.add(new_user)
@@ -132,3 +141,18 @@ async def reset_password(data: ResetPassword, db: Session = Depends(get_db)):
     db.commit()
 
     return {"success": True, "message": "Your password has been reset successfully. Please login."}
+
+@router.post("/change-password")
+async def change_password(
+    data: ChangePassword,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Change password for a logged-in user."""
+    if not verify_password(data.old_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Incorrect old password.")
+    
+    current_user.password_hash = hash_password(data.new_password)
+    db.commit()
+    
+    return {"success": True, "message": "Password updated successfully."}
