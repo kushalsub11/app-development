@@ -340,6 +340,35 @@ class ApiService {
     }
   }
 
+  static Future<List<ReviewModel>> getMyReviewsForAdvisor() async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.get(Uri.parse('${ApiConfig.advisors}/me/reviews'), headers: headers);
+      if (response.statusCode == 200) {
+        final List list = jsonDecode(response.body);
+        return list.map((e) => ReviewModel.fromJson(e)).toList();
+      }
+    } catch (e) {
+      print('Error getting my reviews: $e');
+    }
+    return [];
+  }
+
+  static Future<bool> replyToReview(int reviewId, String reply) async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.post(
+        Uri.parse('${ApiConfig.advisors}/me/reviews/$reviewId/reply'),
+        headers: headers,
+        body: jsonEncode({'reply': reply}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error replying to review: $e');
+      return false;
+    }
+  }
+
   static Future<List<ReviewModel>> getAdvisorReviews(int advisorId) async {
     try {
       final response = await http.get(Uri.parse('${ApiConfig.reviews}/advisor/$advisorId'));

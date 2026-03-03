@@ -197,11 +197,17 @@ class ReviewResponse(BaseModel):
     advisor_id: int
     rating: int
     comment: Optional[str] = None
+    advisor_reply: Optional[str] = None
+    replied_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     user: Optional[UserResponse] = None
 
     class Config:
         from_attributes = True
+
+
+class ReviewReply(BaseModel):
+    reply: str = Field(..., min_length=1)
 
 
 # ---------- Report Schemas ----------

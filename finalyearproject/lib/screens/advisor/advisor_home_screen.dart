@@ -7,7 +7,9 @@ import 'advisor_bookings_screen.dart';
 import 'advisor_profile_screen.dart';
 import '../user/birth_chart_screen.dart';
 import 'payout_history_screen.dart';
+import 'earnings_screen.dart';
 import '../common/notification_screen.dart';
+import 'advisor_reviews_screen.dart';
 
 class AdvisorHomeScreen extends StatefulWidget {
   const AdvisorHomeScreen({super.key});
@@ -234,19 +236,45 @@ class _AdvisorHomeTabState extends State<_AdvisorHomeTab> {
                   // Stats Layer
                   Row(
                     children: [
-                      Expanded(child: _StatCard(icon: Icons.calendar_today, title: 'Bookings', value: '${_stats?['total_bookings'] ?? 0}', color: AppTheme.info)),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _currentIndex = 1), // Switch to Bookings tab
+                          child: _StatCard(icon: Icons.calendar_today, title: 'Bookings', value: '${_stats?['total_bookings'] ?? 0}', color: AppTheme.info),
+                        ),
+                      ),
                       const SizedBox(width: 14),
-                      Expanded(child: _StatCard(icon: Icons.star, title: 'Rating', value: '${_stats?['rating'] ?? 0.0}', color: AppTheme.goldDark)),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => const AdvisorReviewsScreen()));
+                          },
+                          child: _StatCard(icon: Icons.star, title: 'Rating', value: '${_stats?['rating'] ?? 0.0}', color: AppTheme.goldDark),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(child: _StatCard(icon: Icons.reviews, title: 'Reviews', value: '${_stats?['total_reviews'] ?? 0}', color: AppTheme.success)),
-                      const SizedBox(width: 14),
-                      Expanded(child: _StatCard(icon: Icons.account_balance_wallet, title: 'Available', value: '₹${(_stats?['available_balance'] ?? 0).toStringAsFixed(0)}', color: AppTheme.goldDark)),
-                    ],
-                  ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.push(context, MaterialPageRoute(builder: (context) => const AdvisorReviewsScreen()));
+                            },
+                            child: _StatCard(icon: Icons.reviews, title: 'Reviews', value: '${_stats?['total_reviews'] ?? 0}', color: AppTheme.success),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.push(context, MaterialPageRoute(builder: (context) => const EarningsScreen()));
+                            },
+                            child: _StatCard(icon: Icons.account_balance_wallet, title: 'Available', value: '₹${(_stats?['available_balance'] ?? 0).toStringAsFixed(0)}', color: AppTheme.goldDark),
+                          ),
+                        ),
+                      ],
+                    ),
                   const SizedBox(height: 30),
 
                   const Text(

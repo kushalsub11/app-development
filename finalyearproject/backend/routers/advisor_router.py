@@ -7,7 +7,8 @@ import shutil
 from config.database import get_db
 from models.user import User, AdvisorProfile, VerificationStatus
 from schemas.user_schema import (
-    AdvisorProfileResponse, AdvisorProfileUpdate, UserResponse
+    AdvisorProfileResponse, AdvisorProfileUpdate, UserResponse,
+    ReviewResponse, ReviewReply
 )
 from middleware.auth_middleware import get_current_user, require_role
 
@@ -265,3 +266,64 @@ async def get_advisor_stats(
         "withdrawn_amount": total_withdrawn,
         "available_balance": available_balance,
     }
+
+
+@router.get("/me/reviews", response_model=List[ReviewResponse])
+async def get_my_reviews(
+    current_user: User = Depends(require_role("advisor")),
+    db: Session = Depends(get_db),
+):
+    """Get all reviews for the current advisor."""
+    from models.user import Review
+    
+    advisor = db.query(AdvisorProfile).filter(AdvisorProfile.user_id == current_user.id).first()
+    if not advisor:
+         raise HTTPException(status_code=404, detail="Advisor not found")
+
+    reviews = (
+        db.query(Review)
+        .options(joinedload(Review.user))
+        .filter(Review.advisor_id == advisor.id)
+        .order_by(Review.created_at.desc())
+        .all()
+    )
+    return [ReviewResponse.model_validate(r) for r in reviews]
+
+
+@router.post("/me/reviews/{review_id}/reply", response_model=ReviewResponse)
+async def reply_to_review(
+    review_id: int,
+    reply_data: ReviewReply,
+    current_user: User = Depends(require_role("advisor")),
+    db: Session = Depends(get_db),
+):
+    """Add a reply to a review."""
+    from models.user import Review
+    from datetime import datetime
+    
+    advisor = db.query(AdvisorProfile).filter(AdvisorProfile.user_id == current_user.id).first()
+    if not advisor:
+         raise HTTPException(status_code=404, detail="Advisor not found")
+
+    review = db.query(Review).filter(
+        Review.id == review_id, 
+        Review.advisor_id == advisor.id
+    ).first()
+    
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+
+    review.advisor_reply = reply_data.reply
+    review.replied_at = datetime.now()
+    
+    db.commit()
+    db.refresh(review)
+    
+    # Reload with user relationship
+    review = (
+        db.query(Review)
+        .options(joinedload(Review.user))
+        .filter(Review.id == review.id)
+        .first()
+    )
+    return ReviewResponse.model_validate(review)

@@ -205,6 +205,8 @@ class Review(Base):
     advisor_id = Column(Integer, ForeignKey("advisor_profiles.id"), nullable=False)
     rating = Column(Integer, nullable=False)
     comment = Column(Text, nullable=True)
+    advisor_reply = Column(Text, nullable=True)
+    replied_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
 
     # Relationships

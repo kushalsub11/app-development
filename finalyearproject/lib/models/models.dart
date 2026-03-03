@@ -251,7 +251,8 @@ class ReviewModel {
   final int advisorId;
   final int rating;
   final String? comment;
-  final String? createdAt;
+  final String? advisorReply;
+  final String? repliedAt;
   final UserModel? user;
 
   ReviewModel({
@@ -261,6 +262,8 @@ class ReviewModel {
     required this.advisorId,
     required this.rating,
     this.comment,
+    this.advisorReply,
+    this.repliedAt,
     this.createdAt,
     this.user,
   });
@@ -273,6 +276,8 @@ class ReviewModel {
       advisorId: json['advisor_id'],
       rating: json['rating'],
       comment: json['comment'],
+      advisorReply: json['advisor_reply'],
+      repliedAt: json['replied_at'],
       createdAt: json['created_at'],
       user: json['user'] != null ? UserModel.fromJson(json['user']) : null,
     );
