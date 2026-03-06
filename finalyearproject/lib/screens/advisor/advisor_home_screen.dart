@@ -10,6 +10,7 @@ import 'payout_history_screen.dart';
 import 'earnings_screen.dart';
 import '../common/notification_screen.dart';
 import 'advisor_reviews_screen.dart';
+import 'availability_settings_screen.dart';
 
 class AdvisorHomeScreen extends StatefulWidget {
   const AdvisorHomeScreen({super.key});
@@ -36,7 +37,12 @@ class _AdvisorHomeScreenState extends State<AdvisorHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final screens = [
-      _AdvisorHomeTab(user: _user),
+      _AdvisorHomeTab(
+        user: _user,
+        onTabChange: (index) {
+          setState(() => _currentIndex = index);
+        },
+      ),
       const AdvisorBookingsScreen(),
       AdvisorProfileScreen(user: _user, onLogout: _logout),
     ];
@@ -70,8 +76,9 @@ class _AdvisorHomeScreenState extends State<AdvisorHomeScreen> {
 }
 
 class _AdvisorHomeTab extends StatefulWidget {
-  const _AdvisorHomeTab({this.user});
+  const _AdvisorHomeTab({this.user, this.onTabChange});
   final UserModel? user;
+  final Function(int)? onTabChange;
 
   @override
   State<_AdvisorHomeTab> createState() => _AdvisorHomeTabState();
@@ -79,6 +86,7 @@ class _AdvisorHomeTab extends StatefulWidget {
 
 class _AdvisorHomeTabState extends State<_AdvisorHomeTab> {
   Map<String, dynamic>? _stats;
+  AdvisorModel? _advisorProfile;
   bool _isLoading = true;
   int _unreadNotifications = 0;
 
@@ -91,9 +99,11 @@ class _AdvisorHomeTabState extends State<_AdvisorHomeTab> {
 
   Future<void> _loadStats() async {
     final stats = await ApiService.getAdvisorStats();
+    final profile = await ApiService.getMyAdvisorProfile();
     if (mounted) {
       setState(() {
         _stats = stats;
+        _advisorProfile = profile;
         _isLoading = false;
       });
     }
@@ -238,7 +248,7 @@ class _AdvisorHomeTabState extends State<_AdvisorHomeTab> {
                     children: [
                       Expanded(
                         child: GestureDetector(
-                          onTap: () => setState(() => _currentIndex = 1), // Switch to Bookings tab
+                          onTap: () => widget.onTabChange?.call(1), // Switch to Bookings tab
                           child: _StatCard(icon: Icons.calendar_today, title: 'Bookings', value: '${_stats?['total_bookings'] ?? 0}', color: AppTheme.info),
                         ),
                       ),
@@ -270,10 +280,63 @@ class _AdvisorHomeTabState extends State<_AdvisorHomeTab> {
                             onTap: () {
                               Navigator.push(context, MaterialPageRoute(builder: (context) => const EarningsScreen()));
                             },
-                            child: _StatCard(icon: Icons.account_balance_wallet, title: 'Available', value: '₹${(_stats?['available_balance'] ?? 0).toStringAsFixed(0)}', color: AppTheme.goldDark),
+                            child: _StatCard(icon: Icons.account_balance_wallet, title: 'Earnings', value: '₹${(_stats?['available_balance'] ?? 0).toStringAsFixed(0)}', color: AppTheme.goldDark),
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 14),
+                    GestureDetector(
+                      onTap: () async {
+                        if (_advisorProfile != null) {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => AvailabilitySettingsScreen(profile: _advisorProfile!)),
+                          );
+                          if (result == true) _loadStats();
+                        }
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10)],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: (_advisorProfile?.isOnline ?? false) ? AppTheme.success.withOpacity(0.1) : AppTheme.error.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                (_advisorProfile?.isOnline ?? false) ? Icons.check_circle : Icons.offline_bolt,
+                                color: (_advisorProfile?.isOnline ?? false) ? AppTheme.success : AppTheme.error,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Active Status', style: TextStyle(fontSize: 12, color: AppTheme.greyText)),
+                                Text(
+                                  (_advisorProfile?.isOnline ?? false) ? 'ONLINE & ACCEPTING' : 'OFFLINE',
+                                  style: TextStyle(
+                                    fontSize: 15, 
+                                    fontWeight: FontWeight.w800, 
+                                    color: (_advisorProfile?.isOnline ?? false) ? AppTheme.success : AppTheme.error
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Spacer(),
+                            const Icon(Icons.arrow_forward_ios, size: 14, color: AppTheme.greyText),
+                          ],
+                        ),
+                      ),
                     ),
                   const SizedBox(height: 30),
 

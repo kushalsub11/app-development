@@ -45,6 +45,74 @@ class _AvailabilitySettingsScreenState extends State<AvailabilitySettingsScreen>
     });
   }
 
+  void _applyToAllDays(String sourceDay) {
+    if (!_slots.containsKey(sourceDay)) return;
+    final sourceSlots = _slots[sourceDay];
+    setState(() {
+      for (var day in _days) {
+        _slots[day] = List.from(sourceSlots);
+      }
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Applied to all days!'), backgroundColor: AppTheme.success),
+    );
+  }
+
+  Future<void> _addOrEditSlot(String day, {int? index}) async {
+    TimeOfDay start = const TimeOfDay(hour: 9, minute: 0);
+    TimeOfDay end = const TimeOfDay(hour: 17, minute: 0);
+
+    if (index != null && _slots[day] != null) {
+      final slot = _slots[day][index];
+      final startParts = slot['start'].split(':');
+      final endParts = slot['end'].split(':');
+      start = TimeOfDay(hour: int.parse(startParts[0]), minute: int.parse(startParts[1]));
+      end = TimeOfDay(hour: int.parse(endParts[0]), minute: int.parse(endParts[1]));
+    }
+
+    final TimeOfDay? pickedStart = await showTimePicker(
+      context: context,
+      initialTime: start,
+      helpText: 'SELECT START TIME',
+    );
+    if (pickedStart == null) return;
+
+    if (!mounted) return;
+    final TimeOfDay? pickedEnd = await showTimePicker(
+      context: context,
+      initialTime: end,
+      helpText: 'SELECT END TIME',
+    );
+    if (pickedEnd == null) return;
+
+    // Validate range
+    final startMinutes = pickedStart.hour * 60 + pickedStart.minute;
+    final endMinutes = pickedEnd.hour * 60 + pickedEnd.minute;
+
+    if (endMinutes <= startMinutes) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('End time must be after start time'), backgroundColor: AppTheme.error),
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      final newSlot = {
+        "start": "${pickedStart.hour.toString().padLeft(2, '0')}:${pickedStart.minute.toString().padLeft(2, '0')}",
+        "end": "${pickedEnd.hour.toString().padLeft(2, '0')}:${pickedEnd.minute.toString().padLeft(2, '0')}",
+      };
+
+      if (index != null) {
+        _slots[day][index] = newSlot;
+      } else {
+        _slots[day] ??= [];
+        _slots[day].add(newSlot);
+      }
+    });
+  }
+
   Future<void> _saveAvailability() async {
     setState(() => _isSaving = true);
     final success = await ApiService.updateAdvisorProfile({
@@ -188,22 +256,51 @@ class _AvailabilitySettingsScreenState extends State<AvailabilitySettingsScreen>
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
-                  ...(_slots[day] as List).map((slot) => Row(
+                  ...(_slots[day] as List).asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final slot = entry.value;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.access_time, size: 16, color: AppTheme.accentPurple),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () => _addOrEditSlot(day, index: index),
+                            child: Text(
+                              '${slot['start']} - ${slot['end']}', 
+                              style: const TextStyle(fontWeight: FontWeight.w700, decoration: TextDecoration.underline),
+                            ),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 18, color: AppTheme.error),
+                            onPressed: () {
+                              setState(() {
+                                (_slots[day] as List).removeAt(index);
+                                if ((_slots[day] as List).isEmpty) _slots.remove(day);
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Icon(Icons.access_time, size: 16, color: AppTheme.greyText),
-                      const SizedBox(width: 8),
-                      Text('${slot['start']} - ${slot['end']}', style: const TextStyle(fontWeight: FontWeight.w600)),
-                      const Spacer(),
-                      // In a real app, I'd add a time picker here
+                      TextButton.icon(
+                        onPressed: () => _addOrEditSlot(day),
+                        icon: const Icon(Icons.add, size: 16),
+                        label: const Text('Add Slot', style: TextStyle(fontSize: 12)),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => _applyToAllDays(day),
+                        icon: const Icon(Icons.copy_all, size: 16),
+                        label: const Text('Apply to all days', style: TextStyle(fontSize: 12)),
+                        style: TextButton.styleFrom(foregroundColor: AppTheme.goldDark),
+                      ),
                     ],
-                  )).toList(),
-                  const SizedBox(height: 8),
-                  TextButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Time range picker coming in next update!')));
-                    },
-                    icon: const Icon(Icons.add, size: 16),
-                    label: const Text('Add Time Range', style: TextStyle(fontSize: 12)),
                   )
                 ],
               ),

@@ -253,6 +253,7 @@ class ReviewModel {
   final String? comment;
   final String? advisorReply;
   final String? repliedAt;
+  final String? createdAt;
   final UserModel? user;
 
   ReviewModel({

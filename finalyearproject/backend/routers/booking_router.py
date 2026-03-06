@@ -60,6 +60,36 @@ async def create_booking(
     if existing:
         raise HTTPException(status_code=400, detail="This time slot is already booked")
 
+    # Validate against Advisor's Available Slots
+    if advisor.available_slots:
+        # Get weekday name
+        days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        weekday_name = days_of_week[booking_date.weekday()]
+        
+        day_slots = advisor.available_slots.get(weekday_name)
+        if not day_slots:
+            raise HTTPException(status_code=400, detail=f"Advisor is not available on {weekday_name}")
+        
+        # Check if requested time is within any slot
+        is_within_availability = False
+        requested_start_str = start_time.strftime("%H:%M")
+        requested_end_str = end_time.strftime("%H:%M")
+        
+        for slot in day_slots:
+            slot_start = slot.get('start')
+            slot_end = slot.get('end')
+            if slot_start and slot_end:
+                # Simple string comparison works for HH:MM format
+                if requested_start_str >= slot_start and requested_end_str <= slot_end:
+                    is_within_availability = True
+                    break
+        
+        if not is_within_availability:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Requested time {requested_start_str}-{requested_end_str} is outside the advisor's working hours for {weekday_name}"
+            )
+
     # Validate time range
     if end_time <= start_time:
         raise HTTPException(status_code=400, detail="End time must be after start time")

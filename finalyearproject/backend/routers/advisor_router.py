@@ -16,31 +16,43 @@ router = APIRouter(prefix="/advisors", tags=["Advisors"])
 
 
 @router.get("", response_model=List[AdvisorProfileResponse])
-async def get_all_advisors(
-    location: Optional[str] = None,
-    specialization: Optional[str] = None,
-    religion: Optional[str] = None,
-    is_physical: Optional[bool] = None,
-    db: Session = Depends(get_db)
-):
-    """Get all verified and non-blocked advisors with optional filtering."""
-    query = (
-        db.query(AdvisorProfile)
-        .options(joinedload(AdvisorProfile.user))
-        .filter(AdvisorProfile.is_verified == True, AdvisorProfile.is_blocked == False, AdvisorProfile.is_online == True)
-    )
-
-    if location:
-        query = query.filter(AdvisorProfile.location.ilike(f"%{location}%") | AdvisorProfile.office_address.ilike(f"%{location}%"))
-    if specialization:
-        query = query.filter(AdvisorProfile.specialization.ilike(f"%{specialization}%"))
-    if religion:
-        query = query.filter(AdvisorProfile.religion.ilike(f"%{religion}%"))
-    if is_physical is not None:
-        query = query.filter(AdvisorProfile.is_physical_available == is_physical)
-
     advisors = query.all()
-    return [AdvisorProfileResponse.model_validate(a) for a in advisors]
+
+    # Apply Timing Filter (Real-time availability)
+    from datetime import datetime, timedelta
+    nepal_offset = timedelta(hours=5, minutes=45)
+    now_nepal = datetime.utcnow() + nepal_offset
+    current_time_str = now_nepal.strftime("%H:%M")
+    current_day = now_nepal.strftime("%A") # Monday, Tuesday...
+
+    filtered_advisors = []
+    for advisor in advisors:
+        # 1. Check if the advisor is online (already filtered by query, but double-check)
+        if not advisor.is_online:
+            continue
+            
+        # 2. Check timing availability
+        if not advisor.available_slots:
+            # If no slots are set, the advisor is considered unavailable strictly if timing filter is active
+            continue
+            
+        day_slots = advisor.available_slots.get(current_day)
+        if not day_slots:
+            continue # Not working today
+            
+        is_on_duty = False
+        for slot in day_slots:
+            slot_start = slot.get('start')
+            slot_end = slot.get('end')
+            if slot_start and slot_end:
+                if current_time_str >= slot_start and current_time_str <= slot_end:
+                    is_on_duty = True
+                    break
+        
+        if is_on_duty:
+            filtered_advisors.append(advisor)
+
+    return [AdvisorProfileResponse.model_validate(a) for a in filtered_advisors]
 
 
 @router.get("/all", response_model=List[AdvisorProfileResponse])

@@ -476,7 +476,7 @@ class _BookingScreenState extends State<BookingScreen> {
                               ],
                             ),
                           )
-                        else
+                        else ...[
                           GridView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
@@ -520,7 +520,13 @@ class _BookingScreenState extends State<BookingScreen> {
                               );
                             },
                           ),
-                        if (_displaySlots.isEmpty)
+                          const SizedBox(height: 12),
+                          const Text(
+                            '* Manual time selection is disabled for this Guru as they have set specific working hours.',
+                            style: TextStyle(fontSize: 11, color: AppTheme.greyText, fontStyle: FontStyle.italic),
+                          ),
+                        ],
+                        if (_displaySlots.isEmpty && (widget.advisor.availableSlots == null || widget.advisor.availableSlots.isEmpty))
                           Padding(
                             padding: const EdgeInsets.only(top: 16),
                             child: Row(

@@ -127,6 +127,7 @@ class AdvisorProfileResponse(BaseModel):
     is_online: bool = True
     office_address: Optional[str] = None
     religion: Optional[str] = None
+    available_slots: Optional[dict] = None
     user: Optional[UserResponse] = None
 
     class Config:

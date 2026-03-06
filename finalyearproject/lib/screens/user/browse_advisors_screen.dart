@@ -257,7 +257,7 @@ class _BrowseAdvisorsScreenState extends State<BrowseAdvisorsScreen> {
                                     text: _isLoading ? '...' : '${_advisors.where((a) => !_showOnlyFavorites || a.isFavorite).length}',
                                     style: const TextStyle(fontWeight: FontWeight.w800, color: AppTheme.darkText),
                                   ),
-                                  TextSpan(text: _showOnlyFavorites ? ' favorite advisors' : ' advisors'),
+                                  TextSpan(text: _showOnlyFavorites ? ' favorite available advisors' : ' advisors available right now'),
                                 ],
                               ),
                             ),
