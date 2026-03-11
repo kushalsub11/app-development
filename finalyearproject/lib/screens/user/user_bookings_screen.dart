@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../config/theme.dart';
 import '../../services/api_service.dart';
 import '../../models/models.dart';
@@ -43,6 +44,146 @@ class _UserBookingsScreenState extends State<UserBookingsScreen> {
         const SnackBar(content: Text('Booking cancelled'), backgroundColor: AppTheme.warning),
       );
     }
+  }
+
+  Future<void> _initiatePayment(BookingModel b) async {
+    setState(() => _isLoading = true);
+    final khaltiResult = await ApiService.initiateKhaltiPayment(b.id);
+    setState(() => _isLoading = false);
+
+    if (khaltiResult != null && khaltiResult['payment_url'] != null) {
+      final url = Uri.parse(khaltiResult['payment_url']);
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+        if (mounted) {
+          _showVerifyDialog(b.id, khaltiResult['pidx']);
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not launch payment URL')),
+          );
+        }
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to initiate Khalti payment')),
+        );
+      }
+    }
+  }
+
+  void _showVerifyDialog(int bookingId, String pidx) {
+    bool isVerifying = false;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Verify Payment', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Please verify your payment after completing the transaction in Khalti.'),
+              if (isVerifying) ...[
+                const SizedBox(height: 20),
+                const CircularProgressIndicator(),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isVerifying ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isVerifying
+                  ? null
+                  : () async {
+                      setDialogState(() => isVerifying = true);
+                      final res = await ApiService.verifyKhaltiPayment(pidx, bookingId);
+                      setDialogState(() => isVerifying = false);
+                      
+                      if (res != null && res['success']) {
+                        if (mounted) {
+                          Navigator.pop(ctx);
+                          _loadBookings();
+                          _showSuccessPopup();
+                        }
+                      } else {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(res?['message'] ?? 'Payment not confirmed yet. Please wait a moment.'),
+                              backgroundColor: AppTheme.error,
+                            ),
+                          );
+                        }
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.accentPurple,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Verify Payment'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSuccessPopup() {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: const BoxDecoration(
+                  color: AppTheme.success,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check, color: Colors.white, size: 50),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Payment Verified!',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppTheme.darkText),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Your payment is confirmed. You can now join the session at the scheduled time.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: AppTheme.greyText, height: 1.5),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.accentPurple,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Great!', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _openChatWithTimeLock(BookingModel booking) {
@@ -135,17 +276,30 @@ class _UserBookingsScreenState extends State<UserBookingsScreen> {
                               bookingDate: b.bookingDate.split('T').first,
                               startTime: b.startTime,
                               endTime: b.endTime,
-                              status: b.status,
+                              status: b.status == 'requested' ? 'Waiting' : (b.status == 'accepted' ? 'Approved' : b.status),
                               consultationType: b.consultationType,
                               amount: b.amount,
                               meetingLocation: b.meetingLocation,
-                              actions: b.status == 'pending'
+                              actions: b.status == 'requested'
                                   ? [
+                                      const Text('Waiting for Guru...', style: TextStyle(color: AppTheme.goldDark, fontStyle: FontStyle.italic, fontSize: 13, fontWeight: FontWeight.w600)),
                                       TextButton(
                                         onPressed: () => _cancelBooking(b.id),
                                         child: const Text('Cancel', style: TextStyle(color: AppTheme.error)),
                                       ),
                                     ]
+                                  : b.status == 'accepted'
+                                      ? [
+                                          ElevatedButton(
+                                            onPressed: () => _initiatePayment(b),
+                                            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success, padding: const EdgeInsets.symmetric(horizontal: 20)),
+                                            child: const Text('Pay Rs. Rs. NOW'),
+                                          ),
+                                          TextButton(
+                                            onPressed: () => _cancelBooking(b.id),
+                                            child: const Text('Cancel', style: TextStyle(color: AppTheme.error)),
+                                          ),
+                                        ]
                                   : b.status == 'confirmed'
                                       ? [
                                           ElevatedButton(

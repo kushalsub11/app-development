@@ -27,6 +27,12 @@ async def initiate_khalti_payment(
     if booking.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not your booking")
     
+    if booking.status != BookingStatus.accepted:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Cannot pay for booking in {booking.status} status. Please wait for advisor acceptance."
+        )
+    
     # Amount in Paisa
     amount_paisa = int(booking.amount * 100)
 

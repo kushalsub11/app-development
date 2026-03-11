@@ -1,8 +1,12 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from config.database import engine, Base
+from config.database import engine, Base, SessionLocal
 from config.settings import settings
+import asyncio
+from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
+from models.user import Booking, BookingStatus
 from routers import (
     auth_router,
     user_router,
@@ -24,10 +28,44 @@ from routers import (
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
+async def auto_cancel_stale_bookings():
+    while True:
+        await asyncio.sleep(60) # check every minute
+        db = SessionLocal()
+        try:
+            five_mins_ago = datetime.utcnow() - timedelta(minutes=5)
+            # Find requested bookings older than 5 mins
+            stale_bookings = db.query(Booking).filter(
+                Booking.status == BookingStatus.requested,
+                Booking.created_at <= five_mins_ago
+            ).all()
+            
+            if stale_bookings:
+                for b in stale_bookings:
+                    b.status = BookingStatus.cancelled
+                db.commit()
+        except Exception as e:
+            print(f"Error in auto-cancel task: {e}")
+        finally:
+            db.close()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Start background task
+    task = asyncio.create_task(auto_cancel_stale_bookings())
+    yield
+    # Stop background task
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
 app = FastAPI(
     title="Sajelo Guru API",
     description="Astrology Advisory System Backend API",
     version="1.0.0",
+    lifespan=lifespan
 )
 
 # Mount static files

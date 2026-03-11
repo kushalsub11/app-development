@@ -16,6 +16,29 @@ router = APIRouter(prefix="/advisors", tags=["Advisors"])
 
 
 @router.get("", response_model=List[AdvisorProfileResponse])
+async def get_all_advisors(
+    location: Optional[str] = None,
+    specialization: Optional[str] = None,
+    religion: Optional[str] = None,
+    is_physical: Optional[bool] = None,
+    db: Session = Depends(get_db)
+):
+    """Get all verified and non-blocked advisors with optional filtering."""
+    query = (
+        db.query(AdvisorProfile)
+        .options(joinedload(AdvisorProfile.user))
+        .filter(AdvisorProfile.is_verified == True, AdvisorProfile.is_blocked == False, AdvisorProfile.is_online == True)
+    )
+
+    if location:
+        query = query.filter(AdvisorProfile.location.ilike(f"%{location}%") | AdvisorProfile.office_address.ilike(f"%{location}%"))
+    if specialization:
+        query = query.filter(AdvisorProfile.specialization.ilike(f"%{specialization}%"))
+    if religion:
+        query = query.filter(AdvisorProfile.religion.ilike(f"%{religion}%"))
+    if is_physical is not None:
+        query = query.filter(AdvisorProfile.is_physical_available == is_physical)
+
     advisors = query.all()
 
     # Apply Timing Filter (Real-time availability)

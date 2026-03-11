@@ -129,7 +129,6 @@ class _BookingScreenState extends State<BookingScreen> {
       return;
     }
 
-
     setState(() => _isLoading = true);
 
     String startTimeStr;
@@ -154,39 +153,13 @@ class _BookingScreenState extends State<BookingScreen> {
       'meeting_location': _consultationType == 'physical' ? _locationController.text.trim() : null,
     });
 
-    if (result['success']) {
-      final booking = result['booking'] as BookingModel;
-      
-      // Initiate Khalti Payment
-      final khaltiResult = await ApiService.initiateKhaltiPayment(booking.id);
-      
-      setState(() => _isLoading = false);
+    setState(() => _isLoading = false);
 
-      if (khaltiResult != null && khaltiResult['payment_url'] != null) {
-        final url = Uri.parse(khaltiResult['payment_url']);
-        if (await canLaunchUrl(url)) {
-          await launchUrl(url, mode: LaunchMode.externalApplication);
-          
-          // Show verification dialog
-          if (mounted) {
-            _showVerifyDialog(booking.id, khaltiResult['pidx']);
-          }
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Could not launch payment URL')),
-            );
-          }
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to initiate Khalti payment')),
-          );
-        }
+    if (result['success']) {
+      if (mounted) {
+        _showRequestSentPopup();
       }
     } else {
-      setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -198,7 +171,7 @@ class _BookingScreenState extends State<BookingScreen> {
     }
   }
 
-  void _showSuccessPopup() {
+  void _showRequestSentPopup() {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -213,14 +186,14 @@ class _BookingScreenState extends State<BookingScreen> {
                 width: 80,
                 height: 80,
                 decoration: const BoxDecoration(
-                  color: AppTheme.success,
+                  color: AppTheme.goldDark,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.check, color: Colors.white, size: 50),
+                child: const Icon(Icons.send_rounded, color: Colors.white, size: 40),
               ),
               const SizedBox(height: 24),
               const Text(
-                'Payment Received!',
+                'Request Sent!',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w900,
@@ -229,7 +202,7 @@ class _BookingScreenState extends State<BookingScreen> {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Your consultation has been booked successfully. You can start chatting at the scheduled time.',
+                'Your booking request has been sent to the Guru. Please wait up to 5 minutes for their acceptance.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
@@ -248,6 +221,18 @@ class _BookingScreenState extends State<BookingScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.accentPurple,
                     foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Go to Home', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 0,
@@ -286,42 +271,15 @@ class _BookingScreenState extends State<BookingScreen> {
               onPressed: isVerifying ? null : () => Navigator.pop(ctx),
               child: const Text('Cancel'),
             ),
-            ElevatedButton(
-              onPressed: isVerifying
-                  ? null
-                  : () async {
-                      setDialogState(() => isVerifying = true);
-                      final res = await ApiService.verifyKhaltiPayment(pidx, bookingId);
-                      setDialogState(() => isVerifying = false);
-                      
-                      if (res['success']) {
-                        if (mounted) {
-                          Navigator.pop(ctx); // Close verify dialog
-                          _showSuccessPopup();
-                        }
-                      } else {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(res['message'] ?? 'Payment not confirmed yet. Please wait a moment.'),
-                              backgroundColor: AppTheme.error,
-                            ),
-                          );
-                        }
-                      }
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.accentPurple,
-                foregroundColor: Colors.white,
+                  child: const Text('Send Booking Request', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
               ),
-              child: const Text('Verify Payment'),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
-
 
   @override
   void dispose() {
@@ -721,7 +679,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       const SizedBox(height: 30),
 
                       PrimaryButton(
-                        label: 'Confirm Booking',
+                        label: 'Send Booking Request',
                         isLoading: _isLoading,
                         backgroundColor: AppTheme.goldDark,
                         onPressed: _bookConsultation,

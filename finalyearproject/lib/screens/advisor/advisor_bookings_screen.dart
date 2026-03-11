@@ -42,8 +42,39 @@ class _AdvisorBookingsScreenState extends State<AdvisorBookingsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Booking $status'),
-          backgroundColor: status == 'confirmed' ? AppTheme.success : AppTheme.warning,
+          backgroundColor: status == 'confirmed' || status == 'completed' ? AppTheme.success : AppTheme.warning,
         ),
+      );
+    }
+  }
+
+  Future<void> _acceptBooking(int bookingId) async {
+    setState(() => _isLoading = true);
+    final success = await ApiService.acceptBooking(bookingId);
+    setState(() => _isLoading = false);
+    
+    if (success) {
+      _loadBookings();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Request accepted! Waiting for client payment.'), backgroundColor: AppTheme.success),
+      );
+    } else {
+      _loadBookings(); // Refresh to check if it expired
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to accept request. It may have expired.'), backgroundColor: AppTheme.error),
+      );
+    }
+  }
+
+  Future<void> _declineBooking(int bookingId) async {
+    final success = await ApiService.declineBooking(bookingId);
+    if (success) {
+      _loadBookings();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Request declined'), backgroundColor: AppTheme.warning),
       );
     }
   }
@@ -136,19 +167,19 @@ class _AdvisorBookingsScreenState extends State<AdvisorBookingsScreen> {
                               bookingDate: b.bookingDate.split('T').first,
                               startTime: b.startTime,
                               endTime: b.endTime,
-                              status: b.status,
+                              status: b.status == 'requested' ? 'New Request' : (b.status == 'accepted' ? 'Awaiting Payment' : b.status),
                               consultationType: b.consultationType,
                               amount: b.amount,
                               meetingLocation: b.meetingLocation,
-                              actions: b.status == 'pending'
+                              actions: b.status == 'requested'
                                   ? [
                                       TextButton(
-                                        onPressed: () => _updateStatus(b.id, 'cancelled'),
-                                        child: const Text('Reject', style: TextStyle(color: AppTheme.error)),
+                                        onPressed: () => _declineBooking(b.id),
+                                        child: const Text('Decline', style: TextStyle(color: AppTheme.error)),
                                       ),
-                                      const SizedBox(width: 4),
+                                      const SizedBox(width: 8),
                                       ElevatedButton(
-                                        onPressed: () => _updateStatus(b.id, 'confirmed'),
+                                        onPressed: () => _acceptBooking(b.id),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: AppTheme.success,
                                           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -156,6 +187,10 @@ class _AdvisorBookingsScreenState extends State<AdvisorBookingsScreen> {
                                         child: const Text('Accept'),
                                       ),
                                     ]
+                                  : b.status == 'accepted'
+                                      ? [
+                                          const Text('Awaiting client payment...', style: TextStyle(color: AppTheme.greyText, fontStyle: FontStyle.italic, fontSize: 13)),
+                                        ]
                                   : b.status == 'confirmed'
                                       ? [
                                           ElevatedButton(

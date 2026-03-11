@@ -16,6 +16,8 @@ class UserRole(str, enum.Enum):
 
 
 class BookingStatus(str, enum.Enum):
+    requested = "requested"
+    accepted = "accepted"
     pending = "pending"
     confirmed = "confirmed"
     completed = "completed"

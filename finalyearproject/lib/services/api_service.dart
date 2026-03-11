@@ -321,6 +321,32 @@ class ApiService {
     }
   }
 
+  static Future<bool> acceptBooking(int bookingId) async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.post(
+        Uri.parse('${ApiConfig.bookings}/$bookingId/accept'),
+        headers: headers,
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  static Future<bool> declineBooking(int bookingId) async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.post(
+        Uri.parse('${ApiConfig.bookings}/$bookingId/decline'),
+        headers: headers,
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
   // ---------- Review APIs ----------
   static Future<Map<String, dynamic>> createReview(Map<String, dynamic> data) async {
     try {

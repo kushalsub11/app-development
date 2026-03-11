@@ -104,22 +104,24 @@ async def create_booking(
     # Billing Logic: Minimum 1 hour charge, then proportional
     # user said: "minimum booking amount should be the amount with is per hr set by adviser"
     billing_hours = max(1.0, duration_hours)
-    calculated_amount = billing_hours * advisor.hourly_rate
-
+    amount = billing_hours * advisor.hourly_rate
+    
+    # Create Booking with status 'requested'
     new_booking = Booking(
         user_id=current_user.id,
         advisor_id=booking_data.advisor_id,
         booking_date=booking_date,
         start_time=start_time,
         end_time=end_time,
+        status=BookingStatus.requested,
         consultation_type=ConsultationType(booking_data.consultation_type),
-        amount=calculated_amount,
-        meeting_location=booking_data.meeting_location,
+        amount=amount,
+        meeting_location=booking_data.meeting_location
     )
     db.add(new_booking)
     db.commit()
     db.refresh(new_booking)
-    return _format_booking(new_booking)
+    return BookingResponse.model_validate(new_booking)
 
 
 
@@ -128,32 +130,78 @@ async def get_my_bookings(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get bookings for the current user (hides blocked advisors)."""
-    bookings = (
-        db.query(Booking)
-        .join(AdvisorProfile, Booking.advisor_id == AdvisorProfile.id)
-        .filter(Booking.user_id == current_user.id, AdvisorProfile.is_blocked == False)
-        .order_by(Booking.created_at.desc())
-        .all()
-    )
-    return [_format_booking(b) for b in bookings]
+    """Get bookings for the current user."""
+    # Note: Logic for auto-canceling stale requests could be triggered here or via background task
+    bookings = db.query(Booking).filter(Booking.user_id == current_user.id).order_by(Booking.created_at.desc()).all()
+    return [BookingResponse.model_validate(b) for b in bookings]
 
 
-@router.get("/advisor-bookings", response_model=List[BookingResponse])
-async def get_advisor_bookings(
+@router.get("/my-clients", response_model=List[BookingResponse])
+async def get_my_clients(
     current_user: User = Depends(require_role("advisor")),
     db: Session = Depends(get_db),
 ):
     """Get bookings for the current advisor."""
-    advisor = db.query(AdvisorProfile).filter(AdvisorProfile.user_id == current_user.id).first()
-    if not advisor:
+    advisor_profile = db.query(AdvisorProfile).filter(AdvisorProfile.user_id == current_user.id).first()
+    if not advisor_profile:
         raise HTTPException(status_code=404, detail="Advisor profile not found")
+    
+    bookings = db.query(Booking).filter(Booking.advisor_id == advisor_profile.id).order_by(Booking.created_at.desc()).all()
+    return [BookingResponse.model_validate(b) for b in bookings]
 
-    bookings = db.query(Booking).filter(Booking.advisor_id == advisor.id).order_by(Booking.created_at.desc()).all()
-    return [_format_booking(b) for b in bookings]
+
+@router.post("/{booking_id}/accept", response_model=BookingResponse)
+async def accept_booking(
+    booking_id: int,
+    current_user: User = Depends(require_role("advisor")),
+    db: Session = Depends(get_db),
+):
+    """Advisor accepts a booking request."""
+    advisor_profile = db.query(AdvisorProfile).filter(AdvisorProfile.user_id == current_user.id).first()
+    booking = db.query(Booking).filter(Booking.id == booking_id, Booking.advisor_id == advisor_profile.id).first()
+    
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found or not assigned to you")
+    
+    if booking.status != BookingStatus.requested:
+        raise HTTPException(status_code=400, detail=f"Cannot accept booking in {booking.status} status")
+    
+    # Check if 5 mins expired
+    from datetime import timedelta
+    if datetime.utcnow() > booking.created_at + timedelta(minutes=5):
+        booking.status = BookingStatus.cancelled
+        db.commit()
+        raise HTTPException(status_code=400, detail="Booking request expired (5 minute timeout)")
+
+    booking.status = BookingStatus.accepted
+    db.commit()
+    db.refresh(booking)
+    return BookingResponse.model_validate(booking)
 
 
-@router.put("/{booking_id}/status", response_model=BookingResponse)
+@router.post("/{booking_id}/decline", response_model=BookingResponse)
+async def decline_booking(
+    booking_id: int,
+    current_user: User = Depends(require_role("advisor")),
+    db: Session = Depends(get_db),
+):
+    """Advisor declines a booking request."""
+    advisor_profile = db.query(AdvisorProfile).filter(AdvisorProfile.user_id == current_user.id).first()
+    booking = db.query(Booking).filter(Booking.id == booking_id, Booking.advisor_id == advisor_profile.id).first()
+    
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found or not assigned to you")
+    
+    if booking.status != BookingStatus.requested:
+        raise HTTPException(status_code=400, detail="Can only decline bookings in requested status")
+
+    booking.status = BookingStatus.cancelled
+    db.commit()
+    db.refresh(booking)
+    return BookingResponse.model_validate(booking)
+
+
+@router.patch("/{booking_id}/status", response_model=BookingResponse)
 async def update_booking_status(
     booking_id: int,
     status_data: BookingStatusUpdate,
