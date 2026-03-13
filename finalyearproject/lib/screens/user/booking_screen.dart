@@ -233,53 +233,6 @@ class _BookingScreenState extends State<BookingScreen> {
       ),
     );
   }
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    elevation: 0,
-                  ),
-                  child: const Text('Go to My Bookings', style: TextStyle(fontWeight: FontWeight.w700)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showVerifyDialog(int bookingId, String pidx) {
-    bool isVerifying = false;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Done Paying?'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Please click verify after you complete the payment in Khalti.'),
-              if (isVerifying) ...[
-                const SizedBox(height: 20),
-                const CircularProgressIndicator(),
-              ]
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: isVerifying ? null : () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-                  child: const Text('Send Booking Request', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   @override
   void dispose() {
