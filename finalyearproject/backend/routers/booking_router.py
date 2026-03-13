@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List
 from datetime import datetime
 from config.database import get_db
@@ -121,7 +121,7 @@ async def create_booking(
     db.add(new_booking)
     db.commit()
     db.refresh(new_booking)
-    return BookingResponse.model_validate(new_booking)
+    return _format_booking(new_booking)
 
 
 
@@ -132,12 +132,18 @@ async def get_my_bookings(
 ):
     """Get bookings for the current user."""
     # Note: Logic for auto-canceling stale requests could be triggered here or via background task
-    bookings = db.query(Booking).filter(Booking.user_id == current_user.id).order_by(Booking.created_at.desc()).all()
-    return [BookingResponse.model_validate(b) for b in bookings]
+    bookings = (
+        db.query(Booking)
+        .options(joinedload(Booking.advisor).joinedload(AdvisorProfile.user))
+        .filter(Booking.user_id == current_user.id)
+        .order_by(Booking.created_at.desc())
+        .all()
+    )
+    return [_format_booking(b) for b in bookings]
 
 
-@router.get("/my-clients", response_model=List[BookingResponse])
-async def get_my_clients(
+@router.get("/advisor-bookings", response_model=List[BookingResponse])
+async def get_advisor_bookings(
     current_user: User = Depends(require_role("advisor")),
     db: Session = Depends(get_db),
 ):
@@ -146,8 +152,14 @@ async def get_my_clients(
     if not advisor_profile:
         raise HTTPException(status_code=404, detail="Advisor profile not found")
     
-    bookings = db.query(Booking).filter(Booking.advisor_id == advisor_profile.id).order_by(Booking.created_at.desc()).all()
-    return [BookingResponse.model_validate(b) for b in bookings]
+    bookings = (
+        db.query(Booking)
+        .options(joinedload(Booking.user))
+        .filter(Booking.advisor_id == advisor_profile.id)
+        .order_by(Booking.created_at.desc())
+        .all()
+    )
+    return [_format_booking(b) for b in bookings]
 
 
 @router.post("/{booking_id}/accept", response_model=BookingResponse)
@@ -174,9 +186,10 @@ async def accept_booking(
         raise HTTPException(status_code=400, detail="Booking request expired (5 minute timeout)")
 
     booking.status = BookingStatus.accepted
+    booking.accepted_at = datetime.utcnow()
     db.commit()
     db.refresh(booking)
-    return BookingResponse.model_validate(booking)
+    return _format_booking(booking)
 
 
 @router.post("/{booking_id}/decline", response_model=BookingResponse)
@@ -198,7 +211,7 @@ async def decline_booking(
     booking.status = BookingStatus.cancelled
     db.commit()
     db.refresh(booking)
-    return BookingResponse.model_validate(booking)
+    return _format_booking(booking)
 
 
 @router.patch("/{booking_id}/status", response_model=BookingResponse)
@@ -225,12 +238,26 @@ async def get_all_bookings(
     db: Session = Depends(get_db),
 ):
     """Get all bookings (Admin only)."""
-    bookings = db.query(Booking).order_by(Booking.created_at.desc()).all()
+    bookings = (
+        db.query(Booking)
+        .options(joinedload(Booking.user), joinedload(Booking.advisor).joinedload(AdvisorProfile.user))
+        .order_by(Booking.created_at.desc())
+        .all()
+    )
     return [_format_booking(b) for b in bookings]
 
 
 def _format_booking(booking: Booking) -> BookingResponse:
-    """Format booking response with string time fields."""
+    """Format booking response with strings and profile data."""
+    user_name = booking.user.full_name if booking.user else None
+    user_image = booking.user.profile_image if booking.user else None
+    
+    advisor_name = None
+    advisor_image = None
+    if booking.advisor and booking.advisor.user:
+        advisor_name = booking.advisor.user.full_name
+        advisor_image = booking.advisor.user.profile_image
+
     return BookingResponse(
         id=booking.id,
         user_id=booking.user_id,
@@ -242,5 +269,9 @@ def _format_booking(booking: Booking) -> BookingResponse:
         consultation_type=booking.consultation_type.value,
         amount=booking.amount,
         meeting_location=booking.meeting_location,
+        user_name=user_name,
+        user_image=user_image,
+        advisor_name=advisor_name,
+        advisor_image=advisor_image,
         created_at=booking.created_at,
     )

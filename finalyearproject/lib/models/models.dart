@@ -171,6 +171,7 @@ class BookingModel {
   final String? advisorImage;
   final String? userName;
   final String? userImage;
+  final String? acceptedAt;
 
   BookingModel({
     required this.id,
@@ -188,6 +189,7 @@ class BookingModel {
     this.advisorImage,
     this.userName,
     this.userImage,
+    this.acceptedAt,
   });
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
@@ -207,6 +209,7 @@ class BookingModel {
       advisorImage: json['advisor_image'],
       userName: json['user_name'],
       userImage: json['user_image'],
+      acceptedAt: json['accepted_at'],
     );
   }
 

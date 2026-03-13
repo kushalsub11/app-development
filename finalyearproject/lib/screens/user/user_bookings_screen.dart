@@ -290,10 +290,20 @@ class _UserBookingsScreenState extends State<UserBookingsScreen> {
                                     ]
                                   : b.status == 'accepted'
                                       ? [
-                                          ElevatedButton(
-                                            onPressed: () => _initiatePayment(b),
-                                            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success, padding: const EdgeInsets.symmetric(horizontal: 20)),
-                                            child: const Text('Pay Rs. Rs. NOW'),
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.end,
+                                            children: [
+                                              Text(
+                                                _getPaymentTimeoutText(b.acceptedAt),
+                                                style: const TextStyle(color: AppTheme.error, fontSize: 11, fontWeight: FontWeight.bold),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              ElevatedButton(
+                                                onPressed: () => _initiatePayment(b),
+                                                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success, padding: const EdgeInsets.symmetric(horizontal: 20)),
+                                                child: Text('Pay Rs. ${b.amount.toInt()}'),
+                                              ),
+                                            ],
                                           ),
                                           TextButton(
                                             onPressed: () => _cancelBooking(b.id),
@@ -327,6 +337,24 @@ class _UserBookingsScreenState extends State<UserBookingsScreen> {
         ],
       ),
     );
+  }
+
+  String _getPaymentTimeoutText(String? acceptedAtStr) {
+    if (acceptedAtStr == null) return '';
+    try {
+      final acceptedAt = DateTime.parse(acceptedAtStr).toLocal();
+      final now = DateTime.now();
+      final diff = now.difference(acceptedAt);
+      final remaining = const Duration(minutes: 5) - diff;
+
+      if (remaining.isNegative) return 'Expired';
+      
+      final mins = remaining.inMinutes;
+      final secs = remaining.inSeconds % 60;
+      return 'Pay within ${mins}:${secs.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return '';
+    }
   }
 
   void _showReviewDialog(BookingModel booking) {

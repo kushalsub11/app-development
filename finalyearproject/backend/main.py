@@ -34,14 +34,22 @@ async def auto_cancel_stale_bookings():
         db = SessionLocal()
         try:
             five_mins_ago = datetime.utcnow() - timedelta(minutes=5)
-            # Find requested bookings older than 5 mins
-            stale_bookings = db.query(Booking).filter(
+            # 1. Find requested bookings older than 5 mins
+            stale_requests = db.query(Booking).filter(
                 Booking.status == BookingStatus.requested,
                 Booking.created_at <= five_mins_ago
             ).all()
             
-            if stale_bookings:
-                for b in stale_bookings:
+            # 2. Find accepted bookings (awaiting payment) older than 5 mins
+            stale_payments = db.query(Booking).filter(
+                Booking.status == BookingStatus.accepted,
+                Booking.accepted_at <= five_mins_ago
+            ).all()
+
+            all_stale = stale_requests + stale_payments
+            
+            if all_stale:
+                for b in all_stale:
                     b.status = BookingStatus.cancelled
                 db.commit()
         except Exception as e:

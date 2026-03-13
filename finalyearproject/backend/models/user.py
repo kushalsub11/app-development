@@ -170,6 +170,7 @@ class Booking(Base):
     consultation_type = Column(Enum(ConsultationType), default=ConsultationType.chat)
     amount = Column(Float, default=0.0)
     meeting_location = Column(String(500), nullable=True) # Address for physical meeting
+    accepted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
 
     # Relationships

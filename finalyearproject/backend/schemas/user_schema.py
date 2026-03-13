@@ -173,6 +173,10 @@ class BookingResponse(BaseModel):
     consultation_type: str
     amount: float
     meeting_location: Optional[str] = None
+    user_name: Optional[str] = None
+    user_image: Optional[str] = None
+    advisor_name: Optional[str] = None
+    advisor_image: Optional[str] = None
     created_at: Optional[datetime] = None
 
     class Config:
