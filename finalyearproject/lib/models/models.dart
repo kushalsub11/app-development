@@ -242,6 +242,13 @@ class BookingModel {
       return null;
     }
   }
+
+  int get durationMins {
+    final start = scheduledDateTime;
+    final end = endDateTime;
+    if (start == null || end == null) return 0;
+    return end.difference(start).inMinutes;
+  }
 }
 
 
@@ -300,6 +307,8 @@ class ReportModel {
   final String? createdAt;
   final String? reporterName;
   final String? reportedAdvisorName;
+  final int? roomId;
+  final int? bookingId;
 
   ReportModel({
     required this.id,
@@ -312,6 +321,8 @@ class ReportModel {
     this.createdAt,
     this.reporterName,
     this.reportedAdvisorName,
+    this.roomId,
+    this.bookingId,
   });
 
   factory ReportModel.fromJson(Map<String, dynamic> json) {
@@ -326,6 +337,8 @@ class ReportModel {
       createdAt: json['created_at'],
       reporterName: json['reporter_name'],
       reportedAdvisorName: json['reported_advisor_name'],
+      roomId: json['room_id'],
+      bookingId: json['booking_id'],
     );
   }
 }

@@ -4,9 +4,13 @@ from sqlalchemy import func
 from config.database import get_db
 from models.user import (
     User, AdvisorProfile, Booking, Payment, Report,
-    UserRole, PaymentStatus, ReportStatus, VerificationStatus
+    UserRole, PaymentStatus, ReportStatus, VerificationStatus,
+    ChatRoom, ChatMessage
 )
-from schemas.user_schema import AdvisorProfileResponse, ReportResponse
+from schemas.user_schema import (
+    AdvisorProfileResponse, ReportResponse, 
+    ChatRoomResponse, ChatMessageResponse
+)
 from middleware.auth_middleware import require_role
 from typing import List
 
@@ -78,4 +82,86 @@ async def get_all_reports_admin(
 ):
     """Get all reports with detailed info (Admin only)."""
     reports = db.query(Report).order_by(Report.created_at.desc()).all()
-    return [ReportResponse.model_validate(r) for r in reports]
+    
+    response_reports = []
+    for r in reports:
+        resp = ReportResponse.model_validate(r)
+        
+        # Try to find a chat room between the reporter and the reported advisor
+        # An advisor's ID in ChatRoom refers to their User ID.
+        room = db.query(ChatRoom).filter(
+            ChatRoom.user_id == r.reporter_id,
+            ChatRoom.advisor_id == r.reported_advisor.user_id
+        ).first()
+        
+        if room:
+            resp.room_id = room.id
+            resp.booking_id = room.booking_id
+        
+        response_reports.append(resp)
+        
+    return response_reports
+
+
+@router.get("/chats/{room_id}", response_model=ChatRoomResponse)
+async def get_chat_context_admin(
+    room_id: int,
+    current_user: User = Depends(require_role("admin")),
+    db: Session = Depends(get_db),
+):
+    """Retrieve chat history for auditing (Admin only)."""
+    room = (
+        db.query(ChatRoom)
+        .options(joinedload(ChatRoom.messages))
+        .filter(ChatRoom.id == room_id)
+        .first()
+    )
+    if not room:
+        raise HTTPException(status_code=404, detail="Chat room not found")
+    
+    return ChatRoomResponse.model_validate(room)
+
+
+@router.post("/chats/{room_id}/message")
+async def send_admin_message(
+    room_id: int,
+    content: str,
+    current_user: User = Depends(require_role("admin")),
+    db: Session = Depends(get_db),
+):
+    """Send an intervention message into a chat room (Admin only)."""
+    room = db.query(ChatRoom).filter(ChatRoom.id == room_id).first()
+    if not room:
+        raise HTTPException(status_code=404, detail="Chat room not found")
+
+    msg = ChatMessage(
+        room_id=room_id,
+        sender_id=current_user.id,
+        content=f"[ADMIN INTERVENTION]: {content}"
+    )
+    db.add(msg)
+    db.commit()
+    return {"message": "Intervention sent"}
+
+
+@router.post("/bookings/{booking_id}/refund")
+async def refund_booking_payment(
+    booking_id: int,
+    current_user: User = Depends(require_role("admin")),
+    db: Session = Depends(get_db),
+):
+    """Refund a payment for a booking and cancel the booking (Admin only)."""
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    payment = db.query(Payment).filter(Payment.booking_id == booking_id).first()
+    if not payment:
+        raise HTTPException(status_code=404, detail="No payment found for this booking")
+
+    # Update statuses
+    payment.status = PaymentStatus.refunded
+    booking.status = BookingStatus.cancelled
+    
+    db.commit()
+    return {"message": "Payment refunded and booking cancelled successfully"}

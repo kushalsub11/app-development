@@ -234,6 +234,8 @@ class ReportResponse(BaseModel):
     resolved_at: Optional[datetime] = None
     reporter_name: Optional[str] = None
     reported_advisor_name: Optional[str] = None
+    room_id: Optional[int] = None
+    booking_id: Optional[int] = None
 
     class Config:
         from_attributes = True

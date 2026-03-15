@@ -507,6 +507,34 @@ class ApiService {
     return [];
   }
 
+  static Future<ChatRoomModel?> getAdminChatHistory(int roomId) async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.get(Uri.parse(ApiConfig.adminChatAudit(roomId)), headers: headers);
+      if (response.statusCode == 200) {
+        return ChatRoomModel.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      print('Error getting admin chat audit: $e');
+    }
+    return null;
+  }
+
+  static Future<bool> sendAdminIntervention(int roomId, String content) async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.post(
+        Uri.parse(ApiConfig.adminChatIntervene(roomId)),
+        headers: headers,
+        body: jsonEncode({'content': content}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error sending admin intervention: $e');
+      return false;
+    }
+  }
+
   static Future<List<AdvisorModel>> getAllAdvisorsAdmin() async {
     try {
       final headers = await AuthService.getAuthHeaders();
@@ -516,7 +544,21 @@ class ApiService {
         return list.map((e) => AdvisorModel.fromJson(e)).toList();
       }
     } catch (e) {
-      print('Error getting all advisors: $e');
+      print('Error getting admin advisors: $e');
+    }
+    return [];
+  }
+
+  static Future<List<PaymentModel>> getAllPaymentsAdmin() async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.get(Uri.parse(ApiConfig.payments), headers: headers);
+      if (response.statusCode == 200) {
+        final List list = jsonDecode(response.body);
+        return list.map((e) => PaymentModel.fromJson(e)).toList();
+      }
+    } catch (e) {
+      print('Error getting admin payments: $e');
     }
     return [];
   }
@@ -571,6 +613,20 @@ class ApiService {
       );
       return response.statusCode == 200;
     } catch (e) {
+      return false;
+    }
+  }
+
+  static Future<bool> refundBookingPayment(int bookingId) async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/admin/bookings/$bookingId/refund'),
+        headers: headers,
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error refunding payment: $e');
       return false;
     }
   }

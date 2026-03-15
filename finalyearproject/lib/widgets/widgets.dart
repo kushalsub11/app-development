@@ -440,3 +440,47 @@ class ResponsiveContainer extends StatelessWidget {
     );
   }
 }
+// ---------- Status Badge ----------
+class StatusBadge extends StatelessWidget {
+  const StatusBadge({super.key, required this.status});
+  final String status;
+
+  Color get statusColor {
+    switch (status.toLowerCase()) {
+      case 'confirmed':
+      case 'approved':
+      case 'completed':
+        return AppTheme.success;
+      case 'cancelled':
+      case 'rejected':
+      case 'error':
+        return AppTheme.error;
+      case 'pending':
+        return AppTheme.warning;
+      case 'ongoing':
+      case 'active':
+        return AppTheme.info;
+      default:
+        return AppTheme.greyText;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: statusColor.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: statusColor,
+        ),
+      ),
+    );
+  }
+}
