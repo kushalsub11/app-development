@@ -257,6 +257,19 @@ class ApiService {
   }
 
   // ---------- Booking APIs ----------
+  static Future<List<Map<String, dynamic>>> getOccupiedSlots(int advisorId, String date) async {
+    try {
+      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/bookings/occupied/$advisorId?date=$date'));
+      if (response.statusCode == 200) {
+        final List list = jsonDecode(response.body);
+        return List<Map<String, dynamic>>.from(list);
+      }
+    } catch (e) {
+      print('Error getting occupied slots: $e');
+    }
+    return [];
+  }
+
   static Future<Map<String, dynamic>> createBooking(Map<String, dynamic> data) async {
     try {
       final headers = await AuthService.getAuthHeaders();
@@ -591,6 +604,20 @@ class ApiService {
       print('Error getting chat room: $e');
     }
     return null;
+  }
+
+  static Future<List<ChatRoomModel>> getInquiryChats() async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.get(Uri.parse(ApiConfig.chatInquiries), headers: headers);
+      if (response.statusCode == 200) {
+        final List list = jsonDecode(response.body);
+        return list.map((e) => ChatRoomModel.fromJson(e)).toList();
+      }
+    } catch (e) {
+      print('Error getting inquiry chats: $e');
+    }
+    return [];
   }
 
   static Future<Map<String, dynamic>> getOrCreatePreBookingRoom(int advisorId) async {

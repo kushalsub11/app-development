@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session, joinedload
 from typing import List
 from datetime import datetime
@@ -46,19 +47,29 @@ async def create_booking(
     if local_booking_dt < local_now:
         raise HTTPException(status_code=400, detail="Cannot book a past date or time. Please select a future slot.")
 
-    # Check for duplicate booking
-    existing = (
+    # Check for overlapping bookings
+    conflict = (
         db.query(Booking)
         .filter(
             Booking.advisor_id == booking_data.advisor_id,
             Booking.booking_date == booking_date,
-            Booking.start_time == start_time,
-            Booking.status.in_([BookingStatus.pending, BookingStatus.confirmed]),
+            Booking.status.in_([BookingStatus.pending, BookingStatus.confirmed, BookingStatus.requested, BookingStatus.accepted]),
+            or_(
+                # New booking starts during an existing booking
+                and_(Booking.start_time <= start_time, Booking.end_time > start_time),
+                # New booking ends during an existing booking
+                and_(Booking.start_time < end_time, Booking.end_time >= end_time),
+                # New booking completely surrounds an existing booking
+                and_(Booking.start_time >= start_time, Booking.end_time <= end_time)
+            )
         )
         .first()
     )
-    if existing:
-        raise HTTPException(status_code=400, detail="This time slot is already booked")
+    if conflict:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"This time slot ({start_time}-{end_time}) overlaps with an existing booking ({conflict.start_time}-{conflict.end_time})"
+        )
 
     # Validate against Advisor's Available Slots
     if advisor.available_slots:
@@ -101,10 +112,8 @@ async def create_booking(
     duration_minutes = end_minutes - start_minutes
     duration_hours = duration_minutes / 60.0
     
-    # Billing Logic: Minimum 1 hour charge, then proportional
-    # user said: "minimum booking amount should be the amount with is per hr set by adviser"
-    billing_hours = max(1.0, duration_hours)
-    amount = billing_hours * advisor.hourly_rate
+    # Billing Logic: Proportional based on duration (hourly rate / 60 * minutes)
+    amount = (duration_minutes / 60.0) * advisor.hourly_rate
     
     # Create Booking with status 'requested'
     new_booking = Booking(
@@ -230,6 +239,34 @@ async def update_booking_status(
     db.commit()
     db.refresh(booking)
     return _format_booking(booking)
+
+
+@router.get("/occupied/{advisor_id}")
+async def get_occupied_slots(
+    advisor_id: int,
+    date: str,
+    db: Session = Depends(get_db)
+):
+    """Get all occupied time slots for an advisor on a specific date."""
+    try:
+        booking_date = datetime.strptime(date, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+        
+    bookings = (
+        db.query(Booking)
+        .filter(
+            Booking.advisor_id == advisor_id,
+            Booking.booking_date == booking_date,
+            Booking.status.in_([BookingStatus.pending, BookingStatus.confirmed, BookingStatus.requested, BookingStatus.accepted])
+        )
+        .all()
+    )
+    
+    return [
+        {"start": b.start_time.strftime("%H:%M"), "end": b.end_time.strftime("%H:%M")}
+        for b in bookings
+    ]
 
 
 @router.get("/all", response_model=List[BookingResponse])

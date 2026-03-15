@@ -287,6 +287,10 @@ class ChatRoomResponse(BaseModel):
     advisor_id: int
     is_active: bool
     created_at: datetime
+    user_name: Optional[str] = None
+    user_image: Optional[str] = None
+    advisor_name: Optional[str] = None
+    advisor_image: Optional[str] = None
     messages: Optional[list[ChatMessageResponse]] = []
 
     class Config:

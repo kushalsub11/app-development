@@ -400,21 +400,29 @@ class ChatMessageModel {
 
 class ChatRoomModel {
   final int id;
-  final int bookingId;
+  final int? bookingId;
   final int userId;
   final int advisorId;
   final bool isActive;
   final String createdAt;
   final List<ChatMessageModel> messages;
+  final String? userName;
+  final String? userImage;
+  final String? advisorName;
+  final String? advisorImage;
 
   ChatRoomModel({
     required this.id,
-    required this.bookingId,
+    this.bookingId,
     required this.userId,
     required this.advisorId,
     required this.isActive,
     required this.createdAt,
     required this.messages,
+    this.userName,
+    this.userImage,
+    this.advisorName,
+    this.advisorImage,
   });
 
   factory ChatRoomModel.fromJson(Map<String, dynamic> json) {
@@ -428,6 +436,10 @@ class ChatRoomModel {
       messages: json['messages'] != null 
           ? (json['messages'] as List).map((i) => ChatMessageModel.fromJson(i)).toList() 
           : [],
+      userName: json['user_name'],
+      userImage: json['user_image'],
+      advisorName: json['advisor_name'],
+      advisorImage: json['advisor_image'],
     );
   }
 }

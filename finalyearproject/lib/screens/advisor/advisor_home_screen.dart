@@ -11,6 +11,7 @@ import 'earnings_screen.dart';
 import '../common/notification_screen.dart';
 import 'advisor_reviews_screen.dart';
 import 'availability_settings_screen.dart';
+import 'inquiry_list_screen.dart';
 
 class AdvisorHomeScreen extends StatefulWidget {
   const AdvisorHomeScreen({super.key});
@@ -387,6 +388,29 @@ class _AdvisorHomeTabState extends State<_AdvisorHomeTab> {
                           },
                         ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildMiddleActionButton(
+                          context: context,
+                          icon: Icons.question_answer_outlined,
+                          label: 'Inquiry Messages',
+                          color: AppTheme.accentPurple,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const InquiryListScreen()),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 11),
+                      const Expanded(child: SizedBox()),
+                      const SizedBox(width: 11),
+                      const Expanded(child: SizedBox()),
                     ],
                   ),
                   const SizedBox(height: 30),

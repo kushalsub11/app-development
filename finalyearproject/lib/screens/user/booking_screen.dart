@@ -16,36 +16,24 @@ class BookingScreen extends StatefulWidget {
 class _BookingScreenState extends State<BookingScreen> {
   DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
   TimeOfDay _startTime = const TimeOfDay(hour: 10, minute: 0);
-  TimeOfDay _endTime = const TimeOfDay(hour: 11, minute: 0);
   String _consultationType = 'chat';
   final TextEditingController _locationController = TextEditingController();
   bool _isLoading = false;
   List<Map<String, dynamic>> _displaySlots = [];
+  List<Map<String, dynamic>> _occupiedSlots = [];
   Map<String, dynamic>? _selectedSlot;
+  int _selectedDuration = 30; // Default 30 mins
+  final List<int> _durations = [15, 30, 45, 60, 90, 120, 150, 180];
 
   double _calculateAmount() {
-    final startMins = _startTime.hour * 60 + _startTime.minute;
-    final endMins = _endTime.hour * 60 + _endTime.minute;
-    final durationMins = endMins - startMins;
-    
-    if (durationMins <= 0) return widget.advisor.hourlyRate;
-    
-    final durationHours = durationMins / 60.0;
-    final billingHours = durationHours < 1.0 ? 1.0 : durationHours;
-    return billingHours * widget.advisor.hourlyRate;
+    final amount = (_selectedDuration / 60.0) * widget.advisor.hourlyRate;
+    return amount;
   }
 
   String _getDurationText() {
-    final startMins = _startTime.hour * 60 + _startTime.minute;
-    final endMins = _endTime.hour * 60 + _endTime.minute;
-    final durationMins = endMins - startMins;
-    
-    if (durationMins <= 0) return 'Invalid range';
-    
-    if (durationMins < 60) return '$durationMins mins (Min 1 hr billing)';
-    
-    final hours = durationMins ~/ 60;
-    final mins = durationMins % 60;
+    if (_selectedDuration < 60) return '$_selectedDuration mins';
+    final hours = _selectedDuration ~/ 60;
+    final mins = _selectedDuration % 60;
     if (mins == 0) return '$hours hr${hours > 1 ? 's' : ''}';
     return '$hours hr${hours > 1 ? 's' : ''} $mins mins';
   }
@@ -59,25 +47,27 @@ class _BookingScreenState extends State<BookingScreen> {
       lastDate: DateTime.now().add(const Duration(days: 90)),
     );
     if (picked != null) {
-      setState(() {
-        _selectedDate = picked;
-        _updateDisplaySlots();
-      });
+      _selectedDate = picked;
+      await _updateDisplaySlots();
     }
   }
 
-  void _updateDisplaySlots() {
+  Future<void> _updateDisplaySlots() async {
+    final dateStr = '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}';
+    final occupied = await ApiService.getOccupiedSlots(widget.advisor.id, dateStr);
+    
     final dayName = _getDayName(_selectedDate);
     final slots = widget.advisor.availableSlots;
-    if (slots != null && slots is Map && slots.containsKey(dayName)) {
+    
+    if (mounted) {
       setState(() {
-        _displaySlots = List<Map<String, dynamic>>.from(slots[dayName]);
-        _selectedSlot = null; // Reset selection
-      });
-    } else {
-      setState(() {
-        _displaySlots = [];
-        _selectedSlot = null;
+        _occupiedSlots = occupied;
+        if (slots != null && slots is Map && slots.containsKey(dayName)) {
+          _displaySlots = List<Map<String, dynamic>>.from(slots[dayName]);
+        } else {
+          _displaySlots = [];
+        }
+        _selectedSlot = null; 
       });
     }
   }
@@ -90,11 +80,6 @@ class _BookingScreenState extends State<BookingScreen> {
   Future<void> _selectStartTime() async {
     final picked = await showTimePicker(context: context, initialTime: _startTime);
     if (picked != null) setState(() => _startTime = picked);
-  }
-
-  Future<void> _selectEndTime() async {
-    final picked = await showTimePicker(context: context, initialTime: _endTime);
-    if (picked != null) setState(() => _endTime = picked);
   }
 
   Future<void> _bookConsultation() async {
@@ -117,30 +102,18 @@ class _BookingScreenState extends State<BookingScreen> {
       return;
     }
 
-    final startMins = _startTime.hour * 60 + _startTime.minute;
-    final endMins = _endTime.hour * 60 + _endTime.minute;
-    if (endMins <= startMins) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('End time must be after start time.'),
-          backgroundColor: AppTheme.error,
-        ),
-      );
-      return;
-    }
+    // Duration is always selected from a fixed list, no need to check end time < start time here
+    // as it's handled by the duration-based calculation.
 
     setState(() => _isLoading = true);
 
     String startTimeStr;
     String endTimeStr;
 
-    if (_selectedSlot != null) {
-      startTimeStr = _selectedSlot!['start'];
-      endTimeStr = _selectedSlot!['end'];
-    } else {
-      startTimeStr = '${_startTime.hour.toString().padLeft(2, '0')}:${_startTime.minute.toString().padLeft(2, '0')}';
-      endTimeStr = '${_endTime.hour.toString().padLeft(2, '0')}:${_endTime.minute.toString().padLeft(2, '0')}';
-    }
+    startTimeStr = '${_startTime.hour.toString().padLeft(2, '0')}:${_startTime.minute.toString().padLeft(2, '0')}';
+    
+    final endDateTime = DateTime(2000, 1, 1, _startTime.hour, _startTime.minute).add(Duration(minutes: _selectedDuration));
+    endTimeStr = '${endDateTime.hour.toString().padLeft(2, '0')}:${endDateTime.minute.toString().padLeft(2, '0')}';
 
     final result = await ApiService.createBooking({
       'advisor_id': widget.advisor.id,
@@ -238,6 +211,24 @@ class _BookingScreenState extends State<BookingScreen> {
   void dispose() {
     _locationController.dispose();
     super.dispose();
+  }
+
+  Widget _buildErrorContainer(String message) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.error.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.error.withOpacity(0.1)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline, color: AppTheme.error, size: 20),
+          const SizedBox(width: 8),
+          Expanded(child: Text(message, style: const TextStyle(fontSize: 13, color: AppTheme.darkText))),
+        ],
+      ),
+    );
   }
 
   @override
@@ -372,22 +363,10 @@ class _BookingScreenState extends State<BookingScreen> {
                         const Text('Available Slots', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppTheme.darkText)),
                         const SizedBox(height: 12),
                         if (_displaySlots.isEmpty)
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: AppTheme.error.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppTheme.error.withOpacity(0.1)),
-                            ),
-                            child: const Row(
-                              children: [
-                                Icon(Icons.info_outline, color: AppTheme.error, size: 20),
-                                SizedBox(width: 8),
-                                Expanded(child: Text('Guru has no defined slots for this day yet.', style: TextStyle(fontSize: 13, color: AppTheme.darkText))),
-                              ],
-                            ),
-                          )
+                          _buildErrorContainer('Guru has no defined slots for this day yet.')
                         else ...[
+                          const Text('1. Pick a Working Block', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.greyText)),
+                          const SizedBox(height: 8),
                           GridView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
@@ -405,11 +384,8 @@ class _BookingScreenState extends State<BookingScreen> {
                                 onTap: () {
                                   setState(() {
                                     _selectedSlot = slot;
-                                    // Update internal times for billing calculation
                                     final startParts = slot['start'].split(':');
-                                    final endParts = slot['end'].split(':');
                                     _startTime = TimeOfDay(hour: int.parse(startParts[0]), minute: int.parse(startParts[1]));
-                                    _endTime = TimeOfDay(hour: int.parse(endParts[0]), minute: int.parse(endParts[1]));
                                   });
                                 },
                                 child: Container(
@@ -431,11 +407,90 @@ class _BookingScreenState extends State<BookingScreen> {
                               );
                             },
                           ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            '* Manual time selection is disabled for this Guru as they have set specific working hours.',
-                            style: TextStyle(fontSize: 11, color: AppTheme.greyText, fontStyle: FontStyle.italic),
-                          ),
+                          if (_selectedSlot != null) ...[
+                            const SizedBox(height: 24),
+                            const Text('2. Customize Your Time', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.greyText)),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text('Start At', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                                      const SizedBox(height: 8),
+                                      GestureDetector(
+                                        onTap: () async {
+                                          final picked = await showTimePicker(context: context, initialTime: _startTime);
+                                          if (picked != null) setState(() => _startTime = picked);
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(color: AppTheme.inputBorder.withOpacity(0.5)),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              const Icon(Icons.access_time, size: 18, color: AppTheme.accentPurple),
+                                              const SizedBox(width: 8),
+                                              Text(_startTime.format(context), style: const TextStyle(fontWeight: FontWeight.bold)),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text('Duration', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                                      const SizedBox(height: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: AppTheme.inputBorder.withOpacity(0.5)),
+                                        ),
+                                        child: DropdownButtonHideUnderline(
+                                          child: DropdownButton<int>(
+                                            value: _selectedDuration,
+                                            isExpanded: true,
+                                            items: _durations.map((d) => DropdownMenuItem(
+                                              value: d,
+                                              child: Text('$d mins', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                            )).toList(),
+                                            onChanged: (v) => setState(() => _selectedDuration = v!),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (_occupiedSlots.isNotEmpty) ...[
+                            const SizedBox(height: 20),
+                            const Text('Unavailable Times (Already Booked):', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.error)),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              children: _occupiedSlots.map((s) => Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.error.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text('${s['start']} - ${s['end']}', style: const TextStyle(fontSize: 11, color: AppTheme.error, fontWeight: FontWeight.bold)),
+                              )).toList(),
+                            ),
+                          ],
                         ],
                         if (_displaySlots.isEmpty && (widget.advisor.availableSlots == null || widget.advisor.availableSlots.isEmpty))
                           Padding(
@@ -468,18 +523,25 @@ class _BookingScreenState extends State<BookingScreen> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      const Text('End Time', style: TextStyle(fontWeight: FontWeight.w800, color: AppTheme.darkText)),
+                                      const Text('Duration', style: TextStyle(fontWeight: FontWeight.w800, color: AppTheme.darkText)),
                                       const SizedBox(height: 8),
-                                      GestureDetector(
-                                        onTap: _selectEndTime,
-                                        child: Container(
-                                          padding: const EdgeInsets.all(14),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            border: Border.all(color: AppTheme.inputBorder.withOpacity(0.5)),
-                                            borderRadius: BorderRadius.circular(14),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          border: Border.all(color: AppTheme.inputBorder.withOpacity(0.5)),
+                                          borderRadius: BorderRadius.circular(14),
+                                        ),
+                                        child: DropdownButtonHideUnderline(
+                                          child: DropdownButton<int>(
+                                            value: _selectedDuration,
+                                            isExpanded: true,
+                                            items: _durations.map((d) => DropdownMenuItem(
+                                              value: d,
+                                              child: Text('$d mins', style: const TextStyle(fontWeight: FontWeight.w600)),
+                                            )).toList(),
+                                            onChanged: (v) => setState(() => _selectedDuration = v!),
                                           ),
-                                          child: Text(_endTime.format(context), style: const TextStyle(color: AppTheme.darkText, fontWeight: FontWeight.w600)),
                                         ),
                                       ),
                                     ],

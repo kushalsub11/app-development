@@ -58,6 +58,7 @@ class ApiConfig {
   static const String chatRoom = '$baseUrl/chat/room/booking';
   static const String chatWs = '$wsBaseUrl/chat/ws';
   static const String chatUpload = '$baseUrl/chat/upload';
+  static const String chatInquiries = '$baseUrl/chat/inquiries';
 
   // Call endpoints
   static const String initiateCall = '$baseUrl/call/initiate';

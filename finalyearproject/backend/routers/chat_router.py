@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query
 import json
-
-from sqlalchemy.orm import Session
-from sqlalchemy.orm import joinedload
+from sqlalchemy import or_
+from sqlalchemy.orm import Session, joinedload
 from typing import List, Dict
 from config.database import get_db
 from models.user import User, ChatRoom, ChatMessage, Booking
@@ -94,7 +93,7 @@ async def get_or_create_room(
         db.commit()
         db.refresh(room)
         
-    return room
+    return _format_room(room, db)
 
 
 @router.get("/room/pre-booking/{advisor_user_id}", response_model=ChatRoomResponse)
@@ -119,7 +118,7 @@ async def get_or_create_pre_booking_room(
     
     if room:
         room.messages.sort(key=lambda x: x.timestamp)
-        return room
+        return _format_room(room, db)
         
     # Create new inquiry room
     room = ChatRoom(
@@ -130,7 +129,47 @@ async def get_or_create_pre_booking_room(
     db.add(room)
     db.commit()
     db.refresh(room)
-    return room
+    return _format_room(room, db)
+
+
+@router.get("/inquiries", response_model=List[ChatRoomResponse])
+async def get_my_inquiries(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all pre-booking inquiry chat rooms for the current user."""
+    rooms = db.query(ChatRoom).options(
+        joinedload(ChatRoom.messages)
+    ).filter(
+        ChatRoom.booking_id == None,
+        or_(ChatRoom.user_id == current_user.id, ChatRoom.advisor_id == current_user.id)
+    ).all()
+    
+    # Sort messages in each room
+    for room in rooms:
+        room.messages.sort(key=lambda x: x.timestamp)
+        
+    return [_format_room(room, db) for room in rooms]
+
+
+def _format_room(room: ChatRoom, db: Session) -> ChatRoomResponse:
+    """Format chat room response with user and advisor details."""
+    user = db.query(User).filter(User.id == room.user_id).first()
+    advisor = db.query(User).filter(User.id == room.advisor_id).first()
+    
+    return ChatRoomResponse(
+        id=room.id,
+        booking_id=room.booking_id,
+        user_id=room.user_id,
+        advisor_id=room.advisor_id,
+        is_active=room.is_active,
+        created_at=room.created_at,
+        user_name=user.full_name if user else "User",
+        user_image=user.profile_image if user else None,
+        advisor_name=advisor.full_name if advisor else "Advisor",
+        advisor_image=advisor.profile_image if advisor else None,
+        messages=room.messages # Pydantic will handle the mapping
+    )
 @router.post("/upload", response_model=Dict[str, str])
 async def upload_chat_image(
     file: UploadFile = File(...),
