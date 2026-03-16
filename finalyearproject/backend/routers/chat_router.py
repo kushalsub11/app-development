@@ -7,6 +7,7 @@ from config.database import get_db
 from models.user import User, ChatRoom, ChatMessage, Booking
 from schemas.user_schema import ChatRoomResponse, ChatMessageResponse
 from middleware.auth_middleware import get_current_user
+from services.notification_service import create_notification
 from services.auth_service import decode_access_token
 from fastapi import File, UploadFile
 import os
@@ -262,6 +263,17 @@ async def websocket_endpoint(
                     "is_read": new_msg.is_read
                 }
                 await manager.broadcast(broadcast_msg, room_id)
+
+                # Create Notification for Recipient
+                recipient_id = room.advisor_id if user.id == room.user_id else room.user_id
+                create_notification(
+                    db,
+                    user_id=recipient_id,
+                    title="New Message",
+                    message=f"{user.full_name}: {new_msg.content[:50]}{'...' if len(new_msg.content) > 50 else ''}",
+                    notification_type="chat",
+                    reference_id=str(room.id)
+                )
             
             elif msg_type in ["call_invite", "call_accept", "call_reject", "call_end"]:
                 # For call signaling, just broadcast the entire payload

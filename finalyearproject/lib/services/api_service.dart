@@ -290,6 +290,19 @@ class ApiService {
     }
   }
 
+  static Future<BookingModel?> getBookingById(int bookingId) async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.get(Uri.parse('${ApiConfig.bookings}/$bookingId'), headers: headers);
+      if (response.statusCode == 200) {
+        return BookingModel.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      print('Error getting booking by id: $e');
+    }
+    return null;
+  }
+
   static Future<List<BookingModel>> getMyBookings() async {
     try {
       final headers = await AuthService.getAuthHeaders();

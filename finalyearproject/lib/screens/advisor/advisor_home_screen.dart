@@ -12,6 +12,7 @@ import '../common/notification_screen.dart';
 import 'advisor_reviews_screen.dart';
 import 'availability_settings_screen.dart';
 import 'inquiry_list_screen.dart';
+import 'dart:async';
 
 class AdvisorHomeScreen extends StatefulWidget {
   const AdvisorHomeScreen({super.key});
@@ -90,12 +91,26 @@ class _AdvisorHomeTabState extends State<_AdvisorHomeTab> {
   AdvisorModel? _advisorProfile;
   bool _isLoading = true;
   int _unreadNotifications = 0;
+  Timer? _notificationTimer;
 
   @override
   void initState() {
     super.initState();
     _loadStats();
     _loadUnreadCount();
+    _startNotificationPolling();
+  }
+
+  @override
+  void dispose() {
+    _notificationTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startNotificationPolling() {
+    _notificationTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      _loadUnreadCount();
+    });
   }
 
   Future<void> _loadStats() async {

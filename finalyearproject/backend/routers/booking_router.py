@@ -7,6 +7,7 @@ from config.database import get_db
 from models.user import User, Booking, BookingStatus, ConsultationType, AdvisorProfile
 from schemas.user_schema import BookingCreate, BookingResponse, BookingStatusUpdate
 from middleware.auth_middleware import get_current_user, require_role
+from services.notification_service import create_notification
 
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
@@ -130,6 +131,18 @@ async def create_booking(
     db.add(new_booking)
     db.commit()
     db.refresh(new_booking)
+
+    # Create Notification for Advisor
+    advisor_user_id = advisor.user_id
+    create_notification(
+        db,
+        user_id=advisor_user_id,
+        title="New Booking Request",
+        message=f"{current_user.full_name} has requested a booking on {booking_data.booking_date} at {booking_data.start_time}.",
+        notification_type="booking",
+        reference_id=str(new_booking.id)
+    )
+
     return _format_booking(new_booking)
 
 
@@ -171,6 +184,34 @@ async def get_advisor_bookings(
     return [_format_booking(b) for b in bookings]
 
 
+@router.get("/{booking_id}", response_model=BookingResponse)
+async def get_booking_by_id(
+    booking_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get a single booking by ID."""
+    booking = (
+        db.query(Booking)
+        .options(
+            joinedload(Booking.user), 
+            joinedload(Booking.advisor).joinedload(AdvisorProfile.user)
+        )
+        .filter(Booking.id == booking_id)
+        .first()
+    )
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+        
+    # Participation check
+    is_user = booking.user_id == current_user.id
+    is_advisor = booking.advisor.user_id == current_user.id
+    if current_user.role != "admin" and not (is_user or is_advisor):
+        raise HTTPException(status_code=403, detail="Not authorized to view this booking")
+        
+    return _format_booking(booking)
+
+
 @router.post("/{booking_id}/accept", response_model=BookingResponse)
 async def accept_booking(
     booking_id: int,
@@ -198,6 +239,17 @@ async def accept_booking(
     booking.accepted_at = datetime.utcnow()
     db.commit()
     db.refresh(booking)
+
+    # Create Notification for User
+    create_notification(
+        db,
+        user_id=booking.user_id,
+        title="Booking Accepted",
+        message=f"Your booking request with {current_user.full_name} has been accepted.",
+        notification_type="booking",
+        reference_id=str(booking.id)
+    )
+
     return _format_booking(booking)
 
 
@@ -220,6 +272,17 @@ async def decline_booking(
     booking.status = BookingStatus.cancelled
     db.commit()
     db.refresh(booking)
+
+    # Create Notification for User
+    create_notification(
+        db,
+        user_id=booking.user_id,
+        title="Booking Declined",
+        message=f"Your booking request with {current_user.full_name} has been declined.",
+        notification_type="booking",
+        reference_id=str(booking.id)
+    )
+
     return _format_booking(booking)
 
 

@@ -500,6 +500,8 @@ class NotificationModel {
   final int userId;
   final String title;
   final String message;
+  final String? notificationType;
+  final String? referenceId;
   final bool isRead;
   final String createdAt;
 
@@ -508,6 +510,8 @@ class NotificationModel {
     required this.userId,
     required this.title,
     required this.message,
+    this.notificationType,
+    this.referenceId,
     required this.isRead,
     required this.createdAt,
   });
@@ -518,6 +522,8 @@ class NotificationModel {
       userId: json['user_id'],
       title: json['title'] ?? '',
       message: json['message'] ?? '',
+      notificationType: json['notification_type'],
+      referenceId: json['reference_id'],
       isRead: json['is_read'] ?? false,
       createdAt: json['created_at'],
     );

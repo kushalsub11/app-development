@@ -21,6 +21,8 @@ def repair_db():
         ("ALTER TABLE bookings ADD COLUMN meeting_location VARCHAR(500)", "Added meeting_location to bookings"),
         ("ALTER TABLE chat_messages ADD COLUMN message_type messagetype DEFAULT 'text'", "Added message_type to chat_messages"),
         ("ALTER TABLE advisor_profiles ADD COLUMN religion VARCHAR(50)", "Added religion to advisor_profiles"),
+        ("ALTER TABLE notifications ADD COLUMN notification_type VARCHAR(50)", "Added notification_type to notifications"),
+        ("ALTER TABLE notifications ADD COLUMN reference_id VARCHAR(50)", "Added reference_id to notifications"),
     ]
 
     for sql, success_msg in operations:

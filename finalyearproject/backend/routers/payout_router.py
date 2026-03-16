@@ -8,6 +8,7 @@ from config.database import get_db
 from models.user import User, AdvisorProfile, Booking, Payment, PayoutRequest, PayoutStatus, BookingStatus
 from schemas.user_schema import PayoutRequestCreate, PayoutRequestResponse, PayoutStatusUpdate
 from middleware.auth_middleware import get_current_user, require_role
+from services.notification_service import create_notification
 
 router = APIRouter(prefix="/payouts", tags=["Payouts"])
 
@@ -109,9 +110,8 @@ async def update_payout_status(
     db.commit()
     db.refresh(payout)
 
-    # Create Notification for Advisor
-    from models.user import Notification
-    
+    db.refresh(payout)
+
     # Get advisor's user_id
     advisor_user_id = db.query(AdvisorProfile.user_id).filter(AdvisorProfile.id == payout.advisor_id).scalar()
     
@@ -121,12 +121,13 @@ async def update_payout_status(
         if status_data.admin_notes:
             message += f"\nNote: {status_data.admin_notes}"
             
-        notification = Notification(
+        create_notification(
+            db,
             user_id=advisor_user_id,
             title=title,
-            message=message
+            message=message,
+            notification_type="payment",
+            reference_id=str(payout.id)
         )
-        db.add(notification)
-        db.commit()
 
     return payout

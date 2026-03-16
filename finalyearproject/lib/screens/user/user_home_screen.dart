@@ -15,6 +15,8 @@ import '../auth/register_screen.dart';
 import 'birth_chart_screen.dart';
 import 'horoscope_screen.dart';
 import 'advisor_detail_screen.dart';
+import '../common/notification_screen.dart';
+import 'dart:async';
 
 class UserHomeScreen extends StatefulWidget {
   const UserHomeScreen({super.key});
@@ -225,6 +227,8 @@ class _HomeTabState extends State<_HomeTab> {
   List<dynamic> _horoscopes = [];
   List<AdvisorModel> _featuredAdvisors = [];
   bool _isLoading = true;
+  int _unreadCount = 0;
+  Timer? _notificationTimer;
 
   @override
   void initState() {
@@ -232,6 +236,25 @@ class _HomeTabState extends State<_HomeTab> {
     _loadFeatured();
     _loadCalendar();
     _loadHoroscopes();
+    _loadUnreadCount();
+    _startNotificationPolling();
+  }
+
+  @override
+  void dispose() {
+    _notificationTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startNotificationPolling() {
+    _notificationTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      _loadUnreadCount();
+    });
+  }
+
+  Future<void> _loadUnreadCount() async {
+    final count = await ApiService.getUnreadNotificationCount();
+    if (mounted) setState(() => _unreadCount = count);
   }
 
   Future<void> _loadHoroscopes() async {
@@ -323,19 +346,35 @@ class _HomeTabState extends State<_HomeTab> {
                           ],
                         ),
                       ),
-                      Stack(
-                        children: [
-                          const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 28),
-                          Positioned(
-                            right: 0,
-                            top: 0,
-                            child: Container(
-                              width: 10,
-                              height: 10,
-                              decoration: const BoxDecoration(color: AppTheme.gold, shape: BoxShape.circle),
-                            ),
-                          )
-                        ],
+                      GestureDetector(
+                        onTap: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const NotificationScreen()),
+                          );
+                          _loadUnreadCount(); // Refresh after coming back
+                        },
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 28),
+                            if (_unreadCount > 0)
+                              Positioned(
+                                right: -2,
+                                top: -2,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(color: AppTheme.error, shape: BoxShape.circle),
+                                  constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                                  child: Text(
+                                    _unreadCount > 9 ? '9+' : '$_unreadCount',
+                                    style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              )
+                          ],
+                        ),
                       ),
                     ],
                   ),

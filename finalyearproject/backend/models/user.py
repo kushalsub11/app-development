@@ -290,6 +290,8 @@ class Notification(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     title = Column(String(200), nullable=False)
     message = Column(Text, nullable=False)
+    notification_type = Column(String(50), nullable=True) # e.g., 'booking', 'chat', 'payment'
+    reference_id = Column(String(50), nullable=True) # ID for the related entity (booking_id, room_id, etc.)
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime, server_default=func.now())
 
