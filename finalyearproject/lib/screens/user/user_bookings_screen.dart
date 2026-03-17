@@ -5,7 +5,6 @@ import '../../services/api_service.dart';
 import '../../models/models.dart';
 import '../../widgets/widgets.dart';
 import 'chat_screen.dart';
-import '../../services/auth_service.dart';
 
 class UserBookingsScreen extends StatefulWidget {
   const UserBookingsScreen({super.key});
@@ -323,8 +322,18 @@ class _UserBookingsScreenState extends State<UserBookingsScreen> {
                                         ]
                                       : b.status == 'completed'
                                           ? [
-                                              // Review button removed as per user request
-                                              const Text('Completed', style: TextStyle(color: AppTheme.greyText, fontSize: 13, fontStyle: FontStyle.italic)),
+                                              if (!b.isReviewed)
+                                                ElevatedButton(
+                                                  onPressed: () => _showReviewDialog(b),
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor: AppTheme.goldDark,
+                                                    foregroundColor: Colors.white,
+                                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                                  ),
+                                                  child: const Text('Rate & Review', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                                )
+                                              else
+                                                const Text('Reviewed', style: TextStyle(color: AppTheme.success, fontSize: 13, fontStyle: FontStyle.italic, fontWeight: FontWeight.w600)),
                                             ]
                                           : null,
                             );
@@ -349,7 +358,7 @@ class _UserBookingsScreenState extends State<UserBookingsScreen> {
       
       final mins = remaining.inMinutes;
       final secs = remaining.inSeconds % 60;
-      return 'Pay within ${mins}:${secs.toString().padLeft(2, '0')}';
+      return 'Pay within $mins:${secs.toString().padLeft(2, '0')}';
     } catch (e) {
       return '';
     }
@@ -398,6 +407,7 @@ class _UserBookingsScreenState extends State<UserBookingsScreen> {
                 });
                 if (!context.mounted) return;
                 Navigator.pop(ctx);
+                _loadBookings(); // Reload to hide the review button
                 ScaffoldMessenger.of(this.context).showSnackBar(
                   const SnackBar(content: Text('Review submitted!'), backgroundColor: AppTheme.success),
                 );

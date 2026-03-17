@@ -4,7 +4,6 @@ import '../../widgets/widgets.dart';
 import '../../services/auth_service.dart';
 import 'otp_verification_screen.dart';
 import '../../widgets/nepal_location_picker.dart';
-import '../../models/nepal_location.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});

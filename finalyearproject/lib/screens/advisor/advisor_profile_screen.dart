@@ -10,6 +10,7 @@ import '../../services/api_service.dart';
 import 'earnings_screen.dart';
 import 'availability_settings_screen.dart';
 import 'help_support_screen.dart';
+import 'advisor_reviews_screen.dart';
 
 class AdvisorProfileScreen extends StatefulWidget {
   const AdvisorProfileScreen({super.key, this.user, this.onLogout});
@@ -200,9 +201,9 @@ class _AdvisorProfileScreenState extends State<AdvisorProfileScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.4)),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -239,7 +240,7 @@ class _AdvisorProfileScreenState extends State<AdvisorProfileScreen> {
                       color: AppTheme.gold,
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 3),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)],
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10)],
                     ),
                     child: ClipOval(
                       child: _isUploadingImg
@@ -277,7 +278,7 @@ class _AdvisorProfileScreenState extends State<AdvisorProfileScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10)],
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -393,7 +394,7 @@ class _AdvisorProfileScreenState extends State<AdvisorProfileScreen> {
                       title: const Text('Available for Physical Consultation', style: TextStyle(fontWeight: FontWeight.w600)),
                       subtitle: const Text('Let users know if you have a physical office/puja place'),
                       value: _isPhysicalAvailable,
-                      activeColor: AppTheme.accentPurple,
+                      activeThumbColor: AppTheme.accentPurple,
                       onChanged: (val) => setState(() => _isPhysicalAvailable = val),
                     ),
                     if (_isPhysicalAvailable) ...[
@@ -424,6 +425,9 @@ class _AdvisorProfileScreenState extends State<AdvisorProfileScreen> {
               _ProfileMenuItem(icon: Icons.edit, title: 'Edit Advisor Profile', onTap: () => setState(() => _isEditing = true)),
               _ProfileMenuItem(icon: Icons.bar_chart, title: 'My Earnings', onTap: () {
                 Navigator.push(context, MaterialPageRoute(builder: (context) => const EarningsScreen()));
+              }),
+              _ProfileMenuItem(icon: Icons.reviews_outlined, title: 'Customer Reviews', onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const AdvisorReviewsScreen()));
               }),
               _ProfileMenuItem(icon: Icons.verified, title: 'Verification Status', onTap: () {
                 final status = _advisorProfile?.verificationStatus ?? 'pending';
@@ -487,7 +491,7 @@ class _ProfileMenuItem extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: ListTile(
         leading: Icon(icon, color: AppTheme.goldDark),

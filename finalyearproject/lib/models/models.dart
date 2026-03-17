@@ -172,6 +172,7 @@ class BookingModel {
   final String? userName;
   final String? userImage;
   final String? acceptedAt;
+  final bool isReviewed;
 
   BookingModel({
     required this.id,
@@ -190,6 +191,7 @@ class BookingModel {
     this.userName,
     this.userImage,
     this.acceptedAt,
+    this.isReviewed = false,
   });
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
@@ -210,6 +212,7 @@ class BookingModel {
       userName: json['user_name'],
       userImage: json['user_image'],
       acceptedAt: json['accepted_at'],
+      isReviewed: json['is_reviewed'] ?? false,
     );
   }
 
@@ -265,6 +268,8 @@ class ReviewModel {
   final String? repliedAt;
   final String? createdAt;
   final UserModel? user;
+  final String? bookingDate;
+  final String? consultationType;
 
   ReviewModel({
     required this.id,
@@ -277,6 +282,8 @@ class ReviewModel {
     this.repliedAt,
     this.createdAt,
     this.user,
+    this.bookingDate,
+    this.consultationType,
   });
 
   factory ReviewModel.fromJson(Map<String, dynamic> json) {
@@ -291,6 +298,8 @@ class ReviewModel {
       repliedAt: json['replied_at'],
       createdAt: json['created_at'],
       user: json['user'] != null ? UserModel.fromJson(json['user']) : null,
+      bookingDate: json['booking_date'],
+      consultationType: json['consultation_type'],
     );
   }
 }

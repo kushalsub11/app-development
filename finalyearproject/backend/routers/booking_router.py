@@ -400,4 +400,5 @@ def _format_booking(booking: Booking) -> BookingResponse:
         advisor_name=advisor_name,
         advisor_image=advisor_image,
         created_at=booking.created_at,
+        is_reviewed=booking.review is not None
     )

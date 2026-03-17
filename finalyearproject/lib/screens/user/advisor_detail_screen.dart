@@ -259,7 +259,6 @@ class _AdvisorDetailScreenState extends State<AdvisorDetailScreen> {
                               ),
                             ],
                             const SizedBox(height: 14),
-                            /*
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -271,7 +270,6 @@ class _AdvisorDetailScreenState extends State<AdvisorDetailScreen> {
                                 ),
                               ],
                             ),
-                            */
                             const SizedBox(height: 16),
                             // Stats Row
                             Row(
@@ -285,13 +283,10 @@ class _AdvisorDetailScreenState extends State<AdvisorDetailScreen> {
                                   label: 'Rate',
                                   value: 'Rs. ${advisor.hourlyRate.toStringAsFixed(0)}/hr',
                                 ),
-                                // Hiding reviews as per user request
-                                /*
                                 _StatItem(
                                   label: 'Reviews',
                                   value: '${advisor.totalReviews}',
                                 ),
-                                */
                               ],
                             ),
                             if (advisor.isPhysicalAvailable) ...[
@@ -302,7 +297,7 @@ class _AdvisorDetailScreenState extends State<AdvisorDetailScreen> {
                                 decoration: BoxDecoration(
                                   color: AppTheme.accentPurple.withOpacity(0.05),
                                   borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: AppTheme.accentPurple.withOpacity(0.1)),
+                                  border: Border.all(color: AppTheme.accentPurple.withValues(alpha: 0.1)),
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -380,19 +375,30 @@ class _AdvisorDetailScreenState extends State<AdvisorDetailScreen> {
                       ),
                       const SizedBox(height: 20),
                       // Reviews Section
-                      /*
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Reviews (${_reviews.length})',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Reviews (${_reviews.length})',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                if (_reviews.length > 3)
+                                  TextButton(
+                                    onPressed: () {
+                                      // Optional: Show all reviews in a new screen or expanded list
+                                    },
+                                    child: const Text('See All', style: TextStyle(color: AppTheme.gold)),
+                                  ),
+                              ],
                             ),
                             const SizedBox(height: 12),
                             if (_loadingReviews)
@@ -403,38 +409,100 @@ class _AdvisorDetailScreenState extends State<AdvisorDetailScreen> {
                                 style: TextStyle(color: Colors.white60),
                               )
                             else
-                              ..._reviews.map((review) => Card(
-                                    margin: const EdgeInsets.only(bottom: 10),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(14),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Text(
-                                                review.user?.fullName ?? 'User',
-                                                style: const TextStyle(fontWeight: FontWeight.w700),
+                              ..._reviews.map((review) => Container(
+                                    margin: const EdgeInsets.only(bottom: 16),
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            CircleAvatar(
+                                              radius: 16,
+                                              backgroundColor: AppTheme.accentPurple.withValues(alpha: 0.1),
+                                              child: Text(
+                                                review.user?.fullName.isNotEmpty == true ? review.user!.fullName[0].toUpperCase() : '?',
+                                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.accentPurple),
                                               ),
-                                              const Spacer(),
-                                              RatingStars(rating: review.rating, size: 16),
-                                            ],
-                                          ),
-                                          if (review.comment != null) ...[
-                                            const SizedBox(height: 8),
-                                            Text(
-                                              review.comment!,
-                                              style: const TextStyle(color: AppTheme.greyText),
                                             ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    review.user?.fullName ?? 'Anonymous',
+                                                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                                                  ),
+                                                  Row(
+                                                    children: [
+                                                      Text(
+                                                        review.createdAt?.split('T').first ?? '',
+                                                        style: const TextStyle(color: AppTheme.greyText, fontSize: 11),
+                                                      ),
+                                                      if (review.consultationType != null) ...[
+                                                        const SizedBox(width: 8),
+                                                        Text(
+                                                          review.consultationType!.toUpperCase(),
+                                                          style: const TextStyle(color: AppTheme.accentPurple, fontSize: 10, fontWeight: FontWeight.bold),
+                                                        ),
+                                                      ],
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            RatingStars(rating: review.rating, size: 14),
                                           ],
+                                        ),
+                                        if (review.comment != null && review.comment!.isNotEmpty) ...[
+                                          const SizedBox(height: 10),
+                                          Text(
+                                            review.comment!,
+                                            style: const TextStyle(color: AppTheme.darkText, fontSize: 13, height: 1.4),
+                                          ),
                                         ],
-                                      ),
+                                        if (review.advisorReply != null && review.advisorReply!.isNotEmpty) ...[
+                                          const SizedBox(height: 12),
+                                          Container(
+                                            padding: const EdgeInsets.all(12),
+                                            decoration: BoxDecoration(
+                                              color: AppTheme.accentPurple.withValues(alpha: 0.05),
+                                              borderRadius: BorderRadius.circular(12),
+                                              border: Border.all(color: AppTheme.accentPurple.withValues(alpha: 0.1)),
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    const Icon(Icons.reply, size: 14, color: AppTheme.accentPurple),
+                                                    const SizedBox(width: 6),
+                                                    Text(
+                                                      'Reply from ${advisor.user?.fullName ?? 'Advisor'}',
+                                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppTheme.accentPurple),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 6),
+                                                Text(
+                                                  review.advisorReply!,
+                                                  style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic, height: 1.4),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ],
                                     ),
                                   )),
                           ],
                         ),
                       ),
-                      */
                       const SizedBox(height: 30),
                     ],
                   ),

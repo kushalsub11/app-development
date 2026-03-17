@@ -104,13 +104,28 @@ class AstroService:
             "lang": "en"
         }
         try:
-            url = f"{cls.BASE_URL}horoscope/chart-image"
-            response = requests.get(url, params=params, timeout=15)
-            response.raise_for_status()
-            if "<svg" in response.text:
-                return response.text
+            endpoints = ["horoscope/chart-image", "horoscope/chart_image"]
+            for endpoint in endpoints:
+                url = f"{cls.BASE_URL}{endpoint}"
+                logger.info(f"Fetching external chart image from {url}")
+                response = requests.get(url, params=params, timeout=15)
+                if response.status_code == 200 and "<svg" in response.text:
+                    return response.text
+                
+                # Check for URL format too (some v3 endpoints return JSON with a URL)
+                if response.status_code == 200:
+                    try:
+                        data = response.json()
+                        if data.get("status") == 200 and data.get("response"):
+                            resp = data.get("response")
+                            if isinstance(resp, str) and "<svg" in resp:
+                                return resp
+                    except:
+                        pass
+
             return None
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error fetching external chart image: {e}")
             return None
 
     @classmethod
@@ -128,15 +143,24 @@ class AstroService:
             "lang": "en"
         }
         try:
-            # We can use the 'horoscope/basic-details' or 'horoscope/planet-details'
-            url = f"{cls.BASE_URL}horoscope/planet-details"
-            response = requests.get(url, params=params, timeout=15)
-            response.raise_for_status()
-            data = response.json()
+            # Vedic Astro API v3 has multiple detail endpoints. Let's try planet-details first.
+            endpoints = ["horoscope/planet-details", "horoscope/basic-details"]
             
-            if data.get("status") == 200:
-                return data.get("response")
+            for endpoint in endpoints:
+                url = f"{cls.BASE_URL}{endpoint}"
+                logger.info(f"Fetching birth details from {url}")
+                response = requests.get(url, params=params, timeout=15)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get("status") == 200:
+                        return data.get("response")
+                    else:
+                        logger.warning(f"API Error from {endpoint}: {data.get('msg') or data.get('message')}")
+                else:
+                    logger.error(f"HTTP Error {response.status_code} from {endpoint}")
+            
             return None
         except Exception as e:
-            logger.error(f"Error fetching birth details: {e}")
+            logger.error(f"Critical error fetching birth details: {e}")
             return None

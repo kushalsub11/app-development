@@ -317,12 +317,19 @@ async def get_my_reviews(
 
     reviews = (
         db.query(Review)
-        .options(joinedload(Review.user))
+        .options(joinedload(Review.user), joinedload(Review.booking))
         .filter(Review.advisor_id == advisor.id)
         .order_by(Review.created_at.desc())
         .all()
     )
-    return [ReviewResponse.model_validate(r) for r in reviews]
+    results = []
+    for r in reviews:
+        resp = ReviewResponse.model_validate(r)
+        if r.booking:
+            resp.booking_date = r.booking.booking_date
+            resp.consultation_type = r.booking.consultation_type.value
+        results.append(resp)
+    return results
 
 
 @router.post("/me/reviews/{review_id}/reply", response_model=ReviewResponse)

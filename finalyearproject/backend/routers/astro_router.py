@@ -20,10 +20,11 @@ async def generate_birth_chart(
     planet_details = await AstroService.get_birth_details(dob, tob, lat, lon, tz)
     
     if not chart_svg and not planet_details:
-        raise HTTPException(status_code=500, detail="Unable to generate chart. Check birth details.")
+        raise HTTPException(status_code=500, detail="Unable to fetch birth data. Please check your details and try again.")
         
     return {
         "success": True,
         "chart_svg": chart_svg,
-        "details": planet_details # This will contain planet positions, ascendant etc.
+        "details": planet_details,
+        "error": None if (chart_svg and planet_details) else "Partial data: Some chart elements could not be generated."
     }

@@ -9,7 +9,7 @@ from middleware.auth_middleware import get_current_user
 router = APIRouter(prefix="/reviews", tags=["Reviews"])
 
 
-@router.post("/", response_model=ReviewResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=ReviewResponse, status_code=status.HTTP_201_CREATED)
 async def create_review(
     review_data: ReviewCreate,
     current_user: User = Depends(get_current_user),
@@ -22,6 +22,11 @@ async def create_review(
         raise HTTPException(status_code=404, detail="Booking not found")
     if booking.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not your booking")
+
+    # Verify advisor exists
+    advisor = db.query(AdvisorProfile).filter(AdvisorProfile.id == review_data.advisor_id).first()
+    if not advisor:
+        raise HTTPException(status_code=404, detail="Advisor not found")
 
     # Check if review already exists
     existing = db.query(Review).filter(Review.booking_id == review_data.booking_id).first()
@@ -38,11 +43,9 @@ async def create_review(
     db.add(new_review)
 
     # Update advisor rating
-    advisor = db.query(AdvisorProfile).filter(AdvisorProfile.id == review_data.advisor_id).first()
-    if advisor:
-        total = advisor.rating * advisor.total_reviews + review_data.rating
-        advisor.total_reviews += 1
-        advisor.rating = round(total / advisor.total_reviews, 2)
+    total = advisor.rating * advisor.total_reviews + review_data.rating
+    advisor.total_reviews += 1
+    advisor.rating = round(total / advisor.total_reviews, 2)
 
     db.commit()
     db.refresh(new_review)
@@ -54,9 +57,16 @@ async def get_advisor_reviews(advisor_id: int, db: Session = Depends(get_db)):
     """Get all reviews for a specific advisor."""
     reviews = (
         db.query(Review)
-        .options(joinedload(Review.user))
+        .options(joinedload(Review.user), joinedload(Review.booking))
         .filter(Review.advisor_id == advisor_id)
         .order_by(Review.created_at.desc())
         .all()
     )
-    return [ReviewResponse.model_validate(r) for r in reviews]
+    results = []
+    for r in reviews:
+        resp = ReviewResponse.model_validate(r)
+        if r.booking:
+            resp.booking_date = r.booking.booking_date
+            resp.consultation_type = r.booking.consultation_type.value
+        results.append(resp)
+    return results

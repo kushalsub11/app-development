@@ -178,6 +178,7 @@ class BookingResponse(BaseModel):
     advisor_name: Optional[str] = None
     advisor_image: Optional[str] = None
     created_at: Optional[datetime] = None
+    is_reviewed: bool = False
 
     class Config:
         from_attributes = True
@@ -206,6 +207,8 @@ class ReviewResponse(BaseModel):
     replied_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     user: Optional[UserResponse] = None
+    booking_date: Optional[datetime] = None
+    consultation_type: Optional[str] = None
 
     class Config:
         from_attributes = True

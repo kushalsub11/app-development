@@ -834,11 +834,14 @@ class ApiService {
       
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
+      } else {
+        final data = jsonDecode(response.body);
+        return {'success': false, 'error': data['detail'] ?? 'API Error ${response.statusCode}'};
       }
     } catch (e) {
       print('Error generating birth chart: $e');
+      return {'success': false, 'error': 'Connection error: $e'};
     }
-    return {'success': false, 'error': 'Could not generate chart'};
   }
 
   static String _getNepaliSignName(String englishName) {

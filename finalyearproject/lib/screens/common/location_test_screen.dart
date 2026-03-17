@@ -93,7 +93,7 @@ class _LocationTestScreenState extends State<LocationTestScreen> {
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                     ),
                     Container(
-                      margin: const EdgeInsets.top(8),
+                      margin: const EdgeInsets.only(top: 8),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.grey[100],

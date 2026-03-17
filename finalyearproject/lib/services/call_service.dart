@@ -1,11 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '../config/api_config.dart';
 
 class CallService {
   static const String appId = "bcc160f2676a42e18add385c16b1ab79";
-  
+
   late RtcEngine _engine;
   bool _isInitialized = false;
 
@@ -19,12 +18,14 @@ class CallService {
 
     // 2. Create the engine
     _engine = createAgoraRtcEngine();
-    
+
     // 3. Initialize the engine
-    await _engine.initialize(const RtcEngineContext(
-      appId: appId,
-      channelProfile: ChannelProfileType.channelProfileCommunication,
-    ));
+    await _engine.initialize(
+      const RtcEngineContext(
+        appId: appId,
+        channelProfile: ChannelProfileType.channelProfileCommunication,
+      ),
+    );
 
     // 4. Register event handlers
     _engine.registerEventHandler(
@@ -35,9 +36,14 @@ class CallService {
         onUserJoined: (RtcConnection connection, int remoteUid, int elapsed) {
           print("Remote user $remoteUid joined channel");
         },
-        onUserOffline: (RtcConnection connection, int remoteUid, UserOfflineReasonType reason) {
-          print("Remote user $remoteUid left channel");
-        },
+        onUserOffline:
+            (
+              RtcConnection connection,
+              int remoteUid,
+              UserOfflineReasonType reason,
+            ) {
+              print("Remote user $remoteUid left channel");
+            },
         onLeaveChannel: (RtcConnection connection, RtcStats stats) {
           print("Local user left channel");
         },
@@ -65,7 +71,7 @@ class CallService {
     }
 
     await _engine.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
-    
+
     // Explicitly set media options for consistent behavior across devices
     final options = ChannelMediaOptions(
       clientRoleType: ClientRoleType.clientRoleBroadcaster,
@@ -79,11 +85,10 @@ class CallService {
     await _engine.joinChannel(
       token: token,
       channelId: channelName,
-      uid: 0, 
+      uid: 0,
       options: options,
     );
   }
-
 
   Future<void> leaveCall() async {
     if (!_isInitialized) return;

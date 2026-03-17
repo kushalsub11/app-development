@@ -24,6 +24,7 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
   final _pobController = TextEditingController();
   final _latController = TextEditingController(text: '27.7172');
   final _lonController = TextEditingController(text: '85.3240');
+  double _timezone = 5.75;
   bool _isLoading = true;
   bool _generated = false;
   Map<String, dynamic>? _chartData;
@@ -57,7 +58,11 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
       _nameController.text = user.fullName;
       if (user.pob != null) _pobController.text = user.pob!;
       if (user.lat != null) _latController.text = user.lat!.toString();
-      if (user.lon != null) _lonController.text = user.lon!.toString();
+      if (user.lon != null) {
+        _lonController.text = user.lon!.toString();
+        // Rough inference: Nepal is roughly east of 80.0
+        _timezone = user.lon! > 80.0 ? 5.75 : 5.5;
+      }
       if (user.dob != null) {
         try { _dob = DateTime.parse(user.dob!); } catch (_) {}
       }
@@ -203,6 +208,7 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
                       _pobController.text = city.name;
                       _latController.text = city.lat.toString();
                       _lonController.text = city.lon.toString();
+                      _timezone = city.timezone;
                     });
                   },
                   fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
@@ -332,6 +338,7 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
       tob: tobStr,
       lat: lat,
       lon: lon,
+      timezone: _timezone,
     );
 
     if (mounted) {

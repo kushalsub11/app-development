@@ -89,9 +89,10 @@ class _AdvisorReviewsScreenState extends State<AdvisorReviewsScreen> {
                   onRefresh: _loadReviews,
                   child: ListView.builder(
                     padding: const EdgeInsets.all(20),
-                    itemCount: _reviews.length,
+                    itemCount: _reviews.length + 1,
                     itemBuilder: (context, index) {
-                      final r = _reviews[index];
+                      if (index == 0) return _buildRatingSummary();
+                      final r = _reviews[index - 1];
                       return _ReviewCard(
                         review: r,
                         onReply: () => _showReplyDialog(r),
@@ -99,6 +100,84 @@ class _AdvisorReviewsScreenState extends State<AdvisorReviewsScreen> {
                     },
                   ),
                 ),
+    );
+  }
+
+
+  Widget _buildRatingSummary() {
+    if (_reviews.isEmpty) return const SizedBox.shrink();
+
+    final totalReviews = _reviews.length;
+    final averageRating = _reviews.map((r) => r.rating).reduce((a, b) => a + b) / totalReviews;
+    
+    // Count each star
+    final counts = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
+    for (var r in _reviews) {
+      counts[r.rating] = (counts[r.rating] ?? 0) + 1;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: Column(
+                  children: [
+                    Text(averageRating.toStringAsFixed(1), style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: AppTheme.darkText)),
+                    RatingBarIndicator(
+                      rating: averageRating,
+                      itemBuilder: (context, index) => const Icon(Icons.star, color: Colors.amber),
+                      itemCount: 5,
+                      itemSize: 20.0,
+                    ),
+                    const SizedBox(height: 4),
+                    Text('$totalReviews reviews', style: const TextStyle(color: AppTheme.greyText)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                flex: 3,
+                child: Column(
+                  children: [5, 4, 3, 2, 1].map((star) {
+                    final count = counts[star] ?? 0;
+                    final percent = totalReviews > 0 ? count / totalReviews : 0.0;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        children: [
+                          Text('$star', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: percent,
+                                backgroundColor: Colors.grey.withOpacity(0.1),
+                                valueColor: AlwaysStoppedAnimation<Color>(star >= 4 ? AppTheme.success : (star >= 3 ? AppTheme.gold : AppTheme.error)),
+                                minHeight: 6,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -151,7 +230,19 @@ class _ReviewCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(review.user?.fullName ?? 'Anonymous User', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    Text(review.createdAt?.split('T')[0] ?? '', style: const TextStyle(color: AppTheme.greyText, fontSize: 12)),
+                    Row(
+                      children: [
+                        Text(review.createdAt?.split('T')[0] ?? '', style: const TextStyle(color: AppTheme.greyText, fontSize: 12)),
+                        if (review.consultationType != null) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: AppTheme.accentPurple.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                            child: Text(review.consultationType!.toUpperCase(), style: const TextStyle(color: AppTheme.accentPurple, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ],
+                    ),
                   ],
                 ),
               ),

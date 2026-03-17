@@ -73,7 +73,8 @@ app = FastAPI(
     title="Sajelo Guru API",
     description="Astrology Advisory System Backend API",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    strict_slashes=False
 )
 
 # Mount static files

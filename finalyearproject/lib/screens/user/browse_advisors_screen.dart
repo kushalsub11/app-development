@@ -6,7 +6,6 @@ import '../../models/models.dart';
 import '../../widgets/widgets.dart';
 import 'advisor_detail_screen.dart';
 import '../../widgets/nepal_location_picker.dart';
-import '../../models/nepal_location.dart';
 
 class BrowseAdvisorsScreen extends StatefulWidget {
   const BrowseAdvisorsScreen({super.key});
@@ -550,7 +549,7 @@ class _CustomAdvisorCardState extends State<_CustomAdvisorCard> {
                           const Icon(Icons.star, color: AppTheme.goldDark, size: 14),
                           const SizedBox(width: 2),
                           Text(
-                            '$rating',
+                            rating,
                             style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                           ),
                           Text(

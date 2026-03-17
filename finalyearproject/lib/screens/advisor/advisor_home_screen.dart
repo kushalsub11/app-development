@@ -354,7 +354,9 @@ class _AdvisorHomeTabState extends State<_AdvisorHomeTab> {
                         ),
                       ),
                     ),
-                  const SizedBox(height: 30),
+                    const SizedBox(height: 20),
+                    _buildPerformanceInsightCard(),
+                    const SizedBox(height: 30),
 
                   const Text(
                     'Quick Actions',
@@ -431,6 +433,69 @@ class _AdvisorHomeTabState extends State<_AdvisorHomeTab> {
                   const SizedBox(height: 30),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  Widget _buildPerformanceInsightCard() {
+    final rating = (_stats?['rating'] ?? 0.0).toDouble();
+    final totalReviews = _stats?['total_reviews'] ?? 0;
+    
+    String title;
+    String message;
+    IconData icon;
+    Color color;
+    
+    if (totalReviews == 0) {
+      title = "Getting Started";
+      message = "Complete your first booking to start receiving customer ratings and feedback.";
+      icon = Icons.info_outline;
+      color = AppTheme.info;
+    } else if (rating >= 4.8) {
+      title = "Excellent Rating!";
+      message = "Your clients are extremely satisfied. Keep providing high-quality guidance!";
+      icon = Icons.emoji_events;
+      color = AppTheme.success;
+    } else if (rating >= 4.0) {
+      title = "Good Work";
+      message = "You have a solid rating. Check customer reviews to see how you can reach 5 stars.";
+      icon = Icons.thumb_up_alt_outlined;
+      color = AppTheme.goldDark;
+    } else {
+      title = "Improvement Needed";
+      message = "Your rating is below average. Pay close attention to negative feedback and improve your session quality.";
+      icon = Icons.trending_up;
+      color = AppTheme.error;
+    }
+    
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            child: Icon(icon, color: Colors.white, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
+                const SizedBox(height: 4),
+                Text(message, style: TextStyle(fontSize: 13, color: color.withOpacity(0.8), height: 1.4)),
+              ],
             ),
           ),
         ],

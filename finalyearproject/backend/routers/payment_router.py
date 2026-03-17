@@ -4,11 +4,14 @@ from typing import List
 from datetime import datetime
 import requests
 import json
+import logging
 from config.database import get_db
 from config.settings import settings
 from models.user import User, Payment, Booking, BookingStatus, PaymentStatus
 from schemas.user_schema import PaymentCreate, PaymentResponse
 from middleware.auth_middleware import get_current_user, require_role
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
@@ -63,11 +66,17 @@ async def initiate_khalti_payment(
     try:
         response = requests.post(url, headers=headers, json=payload)
         response_data = response.json()
+        
         if response.status_code == 200:
             return response_data
         else:
-            raise HTTPException(status_code=400, detail=response_data.get("detail", "Khalti initiation failed"))
+            error_detail = response_data.get("detail", response_data.get("message", "Khalti initiation failed"))
+            logger.error(f"Khalti API error for booking {booking_id}: Status {response.status_code}, Response: {response_data}")
+            raise HTTPException(status_code=400, detail=error_detail)
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.exception(f"Khalti payment initiation error for booking {booking_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -233,9 +242,13 @@ async def verify_khalti_payment(
             db.commit()
             return {"success": True, "message": "Payment verified successfully", "booking_id": booking.id}
         else:
+            logger.warning(f"Payment verification failed for booking {booking_id}: {response_data}")
             return {"success": False, "message": "Payment not completed or verification failed", "data": response_data}
             
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.exception(f"Payment verification error for booking {booking_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
