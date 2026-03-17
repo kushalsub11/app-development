@@ -2,7 +2,7 @@ class ApiConfig {
   // Change this to your computer's IP address when running on a physical device
   // Use 10.0.2.2 for Android emulator (maps to localhost)
   // For your physical device, we are using the detected local network IP
-  static const String baseUrl = 'http://192.168.1.6:8000';
+  static const String baseUrl = 'http://192.168.1.97:8000';
 
   static String getImageUrl(String? path) {
     if (path == null || path.isEmpty) return '';
@@ -56,7 +56,7 @@ class ApiConfig {
   static String adminChatIntervene(int roomId) => '$baseUrl/admin/chats/$roomId/message';
 
   // Chat endpoints
-  static const String wsBaseUrl = 'ws://192.168.1.6:8000';
+  static const String wsBaseUrl = 'ws://192.168.1.97:8000';
   static const String chatRoom = '$baseUrl/chat/room/booking';
   static const String chatWs = '$wsBaseUrl/chat/ws';
   static const String chatUpload = '$baseUrl/chat/upload';

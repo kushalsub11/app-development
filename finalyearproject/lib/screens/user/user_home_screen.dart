@@ -802,6 +802,7 @@ class _WidgetRefCustomAdvisorCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   Row(
                     children: [
+                      /*
                       const Icon(Icons.star, color: AppTheme.goldDark, size: 14),
                       const SizedBox(width: 2),
                       Text(
@@ -813,6 +814,7 @@ class _WidgetRefCustomAdvisorCard extends StatelessWidget {
                         style: const TextStyle(fontSize: 11, color: AppTheme.greyText),
                       ),
                       const SizedBox(width: 8),
+                      */
                       const Icon(Icons.work_outline, color: AppTheme.inputBorder, size: 12),
                       const SizedBox(width: 2),
                       Text(

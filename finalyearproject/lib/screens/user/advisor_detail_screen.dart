@@ -259,6 +259,7 @@ class _AdvisorDetailScreenState extends State<AdvisorDetailScreen> {
                               ),
                             ],
                             const SizedBox(height: 14),
+                            /*
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -270,6 +271,7 @@ class _AdvisorDetailScreenState extends State<AdvisorDetailScreen> {
                                 ),
                               ],
                             ),
+                            */
                             const SizedBox(height: 16),
                             // Stats Row
                             Row(
@@ -283,10 +285,13 @@ class _AdvisorDetailScreenState extends State<AdvisorDetailScreen> {
                                   label: 'Rate',
                                   value: 'Rs. ${advisor.hourlyRate.toStringAsFixed(0)}/hr',
                                 ),
+                                // Hiding reviews as per user request
+                                /*
                                 _StatItem(
                                   label: 'Reviews',
                                   value: '${advisor.totalReviews}',
                                 ),
+                                */
                               ],
                             ),
                             if (advisor.isPhysicalAvailable) ...[
@@ -375,6 +380,7 @@ class _AdvisorDetailScreenState extends State<AdvisorDetailScreen> {
                       ),
                       const SizedBox(height: 20),
                       // Reviews Section
+                      /*
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Column(
@@ -428,6 +434,7 @@ class _AdvisorDetailScreenState extends State<AdvisorDetailScreen> {
                           ],
                         ),
                       ),
+                      */
                       const SizedBox(height: 30),
                     ],
                   ),

@@ -294,11 +294,37 @@ async def update_booking_status(
     db: Session = Depends(get_db),
 ):
     """Update booking status (confirm, cancel, complete)."""
-    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    booking = (
+        db.query(Booking)
+        .options(joinedload(Booking.advisor))
+        .filter(Booking.id == booking_id)
+        .first()
+    )
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
 
-    booking.status = BookingStatus(status_data.status)
+    new_status = BookingStatus(status_data.status)
+    
+    # Permission Checks
+    is_advisor = booking.advisor.user_id == current_user.id
+    is_admin = current_user.role == "admin"
+    is_user = booking.user_id == current_user.id
+
+    if new_status == BookingStatus.completed:
+        if not (is_advisor or is_admin):
+            raise HTTPException(status_code=403, detail="Only advisors can mark a session as completed")
+        if booking.status != BookingStatus.confirmed:
+            raise HTTPException(status_code=400, detail="Can only complete a confirmed booking")
+            
+    elif new_status == BookingStatus.cancelled:
+        if not (is_user or is_advisor or is_admin):
+            raise HTTPException(status_code=403, detail="Not authorized to cancel this booking")
+            
+    elif new_status == BookingStatus.confirmed:
+        if not is_admin: # Usually confirmed by payment system, but admin can override
+            raise HTTPException(status_code=403, detail="Only admins can manually confirm bookings")
+
+    booking.status = new_status
     db.commit()
     db.refresh(booking)
     return _format_booking(booking)

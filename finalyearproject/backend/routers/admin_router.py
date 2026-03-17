@@ -5,7 +5,7 @@ from config.database import get_db
 from models.user import (
     User, AdvisorProfile, Booking, Payment, Report,
     UserRole, PaymentStatus, ReportStatus, VerificationStatus,
-    ChatRoom, ChatMessage
+    ChatRoom, ChatMessage, BookingStatus
 )
 from schemas.user_schema import (
     AdvisorProfileResponse, ReportResponse, 

@@ -323,10 +323,8 @@ class _UserBookingsScreenState extends State<UserBookingsScreen> {
                                         ]
                                       : b.status == 'completed'
                                           ? [
-                                              TextButton(
-                                                onPressed: () => _showReviewDialog(b),
-                                                child: const Text('Review', style: TextStyle(color: AppTheme.accentPurple)),
-                                              ),
+                                              // Review button removed as per user request
+                                              const Text('Completed', style: TextStyle(color: AppTheme.greyText, fontSize: 13, fontStyle: FontStyle.italic)),
                                             ]
                                           : null,
                             );

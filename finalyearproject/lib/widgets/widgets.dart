@@ -165,12 +165,15 @@ class AdvisorCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     Row(
                       children: [
+                        // Hiding rating and reviews as per user request
+                        /*
                         const Icon(Icons.star, color: AppTheme.gold, size: 18),
                         const SizedBox(width: 4),
                         Text(
                           '$rating ($totalReviews reviews)',
                           style: const TextStyle(fontSize: 13, color: AppTheme.greyText),
                         ),
+                        */
                         const Spacer(),
                         Text(
                           'Rs. ${hourlyRate.toStringAsFixed(0)}/hr',

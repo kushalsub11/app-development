@@ -336,7 +336,7 @@ class ApiService {
   static Future<bool> updateBookingStatus(int bookingId, String status) async {
     try {
       final headers = await AuthService.getAuthHeaders();
-      final response = await http.put(
+      final response = await http.patch(
         Uri.parse('${ApiConfig.bookings}/$bookingId/status'),
         headers: headers,
         body: jsonEncode({'status': status}),
